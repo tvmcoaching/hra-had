@@ -1919,7 +1919,8 @@
     const { x, y } = center(q);
     const left = pt.until - time;
     if (left < 2 && Math.floor(now / 110) % 2 === 0) return;
-    const pop = Math.min(1, (now - pt.bornAt) / 300);
+    const pop = Math.max(0, Math.min(1, (now - pt.bornAt) / 300));   // rAF čas může být starší než vznik portálu
+    if (pop <= 0) return;
     const g = ctx.createRadialGradient(x, y, 0, x, y, c * 0.8);
     g.addColorStop(0, color + 'aa'); g.addColorStop(0.5, color + '44'); g.addColorStop(1, color + '00');
     ctx.fillStyle = g; circle(ctx, x, y, c * 0.8 * pop); ctx.fill();
@@ -2235,7 +2236,17 @@
 
   // ---------- smyčka ----------
   let last = performance.now(), bodyPlaying = false;
+  // smyčka se nesmí nikdy zastavit: chyba v jednom snímku se zaloguje a hra jede dál
+  let frameErrs = 0;
   function frame(now) {
+    requestAnimationFrame(frame);
+    try { tick(now); }
+    catch (e) {
+      if (frameErrs++ < 5) console.error('Chyba ve snímku:', e);
+      try { for (const g of [ctx, fctx]) { if (g.reset) g.reset(); else { g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1; g.filter = 'none'; } } } catch (e2) {}
+    }
+  }
+  function tick(now) {
     const rawDt = Math.max(0, (now - last) / 1000);
     const dt = Math.min(0.05, rawDt);
     last = now;
@@ -2289,7 +2300,6 @@
     draw(now);
     if (wardrobeOpen) drawPreview(now);
     if (laughOn && !overlay.classList.contains('hidden')) drawLaugh(now);
-    requestAnimationFrame(frame);
   }
 
   // ---------- HUD ----------
