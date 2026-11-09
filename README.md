@@ -19,3 +19,7 @@ Stačí otevřít `index.html` v prohlížeči.
 - Hra pro dva na jednom telefonu: hráč 1 levá půlka, hráč 2 pravá.
 - Přidej na plochu (iPhone: Sdílet → Přidat na plochu) – spustí se přes celou obrazovku a funguje i bez internetu.
 - Při změně hry zvyš `VERSION` v `sw.js`, ať si telefony stáhnou novou verzi.
+
+## Výsměch po prohře
+Po nárazu se přehrají poslední 2 vteřiny zpomaleně s přiblížením, pak se had zarazí, vyprskne smíchy,
+válí se, buší ocasem v rytmu smíchu a ukazuje na hráče. Smích je nahrávka CC0 (viz `CREDITS.md`).

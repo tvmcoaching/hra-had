@@ -17,7 +17,9 @@
 <title>Had</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- písmo se dotahuje na pozadí: hra nečeká na Google, když je slabý signál -->
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet"></noscript>
 <style>
   :root {
     --bg: #0b0f1a;
@@ -174,7 +176,7 @@
   .lblist li.me { border-color: #fde047; background: rgba(253,224,71,.12); animation: meGlow 1.4s ease-in-out infinite; }
   @keyframes meGlow { 50% { box-shadow: 0 0 18px rgba(253,224,71,.35); } }
   #lbStatus:empty { display: none; }
-  #laugh { width: 100%; max-width: 320px; height: 120px; flex-shrink: 0; }
+  #laugh { width: 100%; max-width: 340px; height: 140px; flex-shrink: 0; }
   #laugh.hidden, .hero.hidden { display: none; }
   .overlay.over .legend, .overlay.over .tip { display: none; }
   .overlay.over #msg { color: var(--text); font-size: 18px; font-weight: 600; font-style: italic; }
@@ -283,7 +285,7 @@
     .tile { min-height: 84px; justify-content: center; font-size: 13px; padding: 8px 2px; border-radius: 14px; }
     .tile .sw { width: 38px; height: 38px; }
     .tile .ic { font-size: 30px; line-height: 38px; height: 38px; }
-    #laugh { max-width: 380px; height: 140px; }
+    #laugh { max-width: 400px; height: 160px; }
   }
   @media (max-width: 380px) {
     h1 { font-size: 28px; }
@@ -320,7 +322,7 @@
     #overlay .tip { display: none; }
     #overlay .hero { font-size: 44px; }
     #overlay .row #play { min-height: 56px; font-size: 21px; }
-    #laugh { height: 112px; }
+    #laugh { height: 128px; }
     .overlay h2 { font-size: 26px; }
     .opts { display: grid; grid-template-columns: 1fr 1fr; max-width: 820px; }
     #sDone, #lbBack, #wDone { max-width: 320px; }
@@ -728,6 +730,65 @@
     } catch (e) {}
   };
 
+  // ---------- smích (nahrávky CC0 z Freesound, viz CREDITS.md) ----------
+  // beats = nárazy smíchu [začátek ms, délka ms] – podle nich had buší ocasem a telefon vibruje
+  // jedna nahrávka (Hysterical Laughter, CC0) rozstříhaná na 5 různých úseků
+  const LAUGHS = [
+    { id: 'smich-1', kind: 'low', dur: 1.76, beats: [[0,100],[280,60],[500,100],[720,120],[980,240],[1520,80],[1640,40]] },
+    { id: 'smich-2', kind: 'low', dur: 1.5, beats: [[0,60],[140,120],[340,120],[580,100],[820,280],[1300,40]] },
+    { id: 'smich-3', kind: 'fast', dur: 3.1, beats: [[120,120],[480,280],[1020,280],[1600,160],[2540,80],[2820,100]] },
+    { id: 'smich-4', kind: 'fast', dur: 2.9, beats: [[0,60],[220,60],[440,200],[820,440],[1480,540],[2460,280]] },
+    { id: 'smich-5', kind: 'mid', dur: 1.6, beats: [[80,60],[240,40],[380,220],[780,60],[1020,60],[1280,60]] },
+  ];
+  const LAUGH_DELAY = 0.75;            // had se nejdřív zarazí a vyprskne, pak se rozesměje
+  const laughData = {};                 // id -> ArrayBuffer (stažené) / AudioBuffer (připravené)
+  let laughSrc = null, laughGain = null;
+  if (/^https?:$/.test(location.protocol)) {
+    for (const L of LAUGHS) fetch('zvuky/' + L.id + '.mp3').then(r => r.ok ? r.arrayBuffer() : null).then(ab => { if (ab) { laughData[L.id] = ab; if (actx) decodeLaughs(); } }).catch(() => {});
+  }
+  function decodeLaughs() {
+    for (const L of LAUGHS) {
+      const ab = laughData[L.id];
+      if (!(ab instanceof ArrayBuffer) || L.decoding) continue;
+      L.decoding = true;
+      const ok = buf => { laughData[L.id] = buf; }, bad = () => { L.decoding = false; };
+      try { const pr = actx.decodeAudioData(ab.slice(0), ok, bad); if (pr && pr.catch) pr.catch(bad); } catch (e) { bad(); }
+    }
+  }
+  let lastLaugh = store.get('had-last-laugh', '');
+  function pickLaugh(fast, low) {       // nikdy stejný smích dvakrát po sobě
+    const pools = [fast ? LAUGHS.filter(l => l.kind === 'fast') : null, low ? LAUGHS.filter(l => l.kind === 'low') : null, LAUGHS];
+    for (const pool of pools) {
+      if (!pool) continue;
+      const opts = pool.filter(l => l.id !== lastLaugh);
+      if (opts.length) { const l = pick(opts); lastLaugh = l.id; store.set('had-last-laugh', l.id); return l; }
+    }
+    return LAUGHS[0];
+  }
+  function playLaugh(L) {
+    stopLaughSound();
+    if (muted || !audio()) return;
+    const buf = laughData[L.id];
+    if (!(buf instanceof AudioBuffer)) { sfx.laugh(); return; }   // nahrávka ještě není – syntetický smích
+    laughSrc = actx.createBufferSource(); laughSrc.buffer = buf;
+    laughGain = actx.createGain(); laughGain.gain.value = 1;
+    laughSrc.connect(laughGain).connect(master);
+    laughSrc.start();
+  }
+  function stopLaughSound() { try { laughSrc && laughSrc.stop(); } catch (e) {} laughSrc = null; laughGain = null; }
+  function laughVibration(L) {          // vibrace v rytmu smíchu
+    const pat = []; let tpos = 0;
+    for (const [st, len] of L.beats) {
+      const on = Math.max(45, Math.min(160, len)), wait = Math.max(0, st - tpos);
+      if (!pat.length) pat.push(0);
+      pat.push(wait, on); tpos = st + on;
+    }
+    return pat;
+  }
+  // syntetický „buch“ ocasu o zem
+  function thump() { if (muted || !audio()) return; tone(110, 38, 0.16, 'sine', 0.22); noise(0.06, 0.08, 0, 500, 'lowpass'); }
+  function pfff() { if (muted || !audio()) return; noise(0.28, 0.16, 0, 2400, 'bandpass'); }
+
   // Safari (iPhone) pustí zvuk až po klepnutí: při prvním dotyku zvuk "odemkneme"
   // a přepneme na režim přehrávání, aby hrál i při ztlumeném zvonění.
   let audioUnlocked = false, keepAlive = null;
@@ -748,6 +809,7 @@
       try { const s = a.createBufferSource(); s.buffer = a.createBuffer(1, 1, 22050); s.connect(a.destination); s.start(0); } catch (e) {}
       audioUnlocked = true;
     }
+    decodeLaughs();
     // starší iOS bez audioSession: tichá smyčka v <audio> přepne telefon do režimu "média"
     if (isIOS && !navigator.audioSession && !muted) {
       try {
@@ -787,6 +849,7 @@
   let countdown = 0, countAcc = 0, shakeT = 0, shakeMax = 0.4, shakePow = 0.35, flashT = 0, flashColor = '255,80,80';
   let slowmoUntil = 0;
   const cam = { x: 0, y: 0, k: 0, target: 0 };
+  let zoomAmt = 0.14;
   let canRestart = true;
   let fireflies = [];
 
@@ -843,9 +906,11 @@
     foods = []; portals = []; particles = []; texts = []; banners = []; confetti = [];
     acc = 0; eaten = 0; speed = BASE_SPEED; time = 0; slowUntil = 0; frenzyUntil = 0;
     frenzyNext = 22 + Math.random() * 10;
-    cam.k = cam.target = 0;
+    cam.k = cam.target = 0; zoomAmt = 0.14;
+    replay = null; stopLaughSound();
     spawn('apple');
     paused = false;
+    snaps = []; recordSnap();
     phase = 'countdown'; countdown = 3; countAcc = 0;
     sfx.count();
     overlay.classList.add('hidden');
@@ -921,10 +986,72 @@
       }
     }
     moveCritters();
+    recordSnap();
     if (dying.length) {
       const alive = players.filter(p => p.alive);
       if (mode === 1 || alive.length <= 1) endGame(alive, dying);
     }
+  }
+
+  // ---------- záznam posledních vteřin (pro zpomalené přehrání po smrti) ----------
+  let snaps = [], replay = null;
+  const REPLAY_SPAN = 2.2, REPLAY_RATE = 0.5;
+  function recordSnap() {
+    snaps.push({
+      time, speed, slowUntil, frenzyUntil,
+      players: players.map(p => ({ ...p, body: p.body.map(q => ({ ...q })), prev: p.prev.map(q => ({ ...q })), queue: [], bulges: p.bulges.map(b => ({ ...b })) })),
+      foods: foods.map(f => ({ ...f })), portals: portals.slice(),
+    });
+    while (snaps.length > 2 && snaps[1].time < time - REPLAY_SPAN - 0.4) snaps.shift();
+  }
+  function startReplay(done) {
+    const end = snaps.length ? snaps[snaps.length - 1].time : 0;
+    const list = snaps.filter(sn => sn.time >= end - REPLAY_SPAN);
+    if (list.length < 3) { done(); return; }
+    replay = { snaps: list, t: list[0].time, end, done, holdUntil: 0, z0: cam.x, startedAt: performance.now() };
+    tone(900, 120, 0.35, 'sawtooth', 0.05);       // „převinutí pásky“
+    noise(0.3, 0.05, 0, 3000, 'highpass');
+  }
+  function finishReplay() {
+    if (!replay) return;
+    const d = replay.done; replay = null;
+    cam.k = cam.target = 0; zoomAmt = 0.14;
+    d();
+  }
+  function updateReplay(dt, now) {
+    const R = replay;
+    if (R.t < R.end) { R.t = Math.min(R.end, R.t + dt * REPLAY_RATE); }
+    else if (!R.holdUntil) R.holdUntil = now + 1100;   // na konci nechat doznít smrt
+    else if (now > R.holdUntil) { finishReplay(); return; }
+    const prog = clamp01((R.t - R.snaps[0].time) / Math.max(0.01, R.end - R.snaps[0].time));
+    zoomAmt = 0.95; cam.target = 0.15 + 0.85 * smooth(prog);
+  }
+  function drawReplay(now) {
+    const R = replay, S = R.snaps;
+    let k = 0; while (k < S.length - 1 && S[k + 1].time <= R.t) k++;
+    const a = S[k], b = S[k + 1];
+    const tt = b ? clamp01((R.t - a.time) / Math.max(1e-6, b.time - a.time)) : 1;
+    if (!b && !R.deathShown) {   // poslední snímek: smrt znovu, zpomaleně
+      R.deathShown = true;
+      for (const q of a.players) if (!q.alive) { q.deathAt = now + 250; q.shattered = false; }
+      shake(0.5, 0.5); flash('255,80,80', 0.3); sfx.die();
+    }
+    const keep = { players, foods, portals, time, acc, speed, slowUntil, frenzyUntil, phase };
+    players = a.players; foods = a.foods; portals = a.portals; speed = a.speed; slowUntil = a.slowUntil; frenzyUntil = a.frenzyUntil;
+    time = b ? a.time + tt * (b.time - a.time) : a.time; phase = 'play';
+    acc = tt / effSpeed();
+    try { draw(now); }
+    finally { ({ players, foods, portals, time, acc, speed, slowUntil, frenzyUntil, phase } = keep); }
+    // filmové pruhy a nápis
+    const W = canvas.width, c = W / N;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(0, 0, W, c * 1.3); ctx.fillRect(0, W - c * 1.3, W, c * 1.3);
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    if (Math.floor(now / 450) % 2) { ctx.fillStyle = '#ef4444'; ctx.beginPath(); ctx.arc(c * 0.9, c * 0.65, c * 0.28, 0, TAU); ctx.fill(); }
+    ctx.fillStyle = '#fff'; ctx.font = `700 ${c * 0.62}px ${FONT}`;
+    ctx.fillText('⏪ ZÁZNAM  ½×', c * 1.5, c * 0.68);
+    ctx.textAlign = 'right'; ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.font = `500 ${c * 0.5}px ${FONT}`;
+    ctx.fillText(touchUI ? 'klepnutím přeskočíš' : 'mezerník = přeskočit', W - c * 0.6, W - c * 0.65);
   }
 
   function moveCritters() {
@@ -1072,7 +1199,7 @@
     phase = 'over';
     canRestart = false;
     let celebrate = false;
-    let laugher = players[0];
+    let laugher = players[0], laughDef = null, tauntText = '';
     if (mode === 1) {
       const p = players[0], s = p.score;
       const record = s > best;
@@ -1083,7 +1210,9 @@
         titleEl.textContent = 'Nový rekord! 🏆';
         celebrate = s > 0;
       } else titleEl.textContent = 'Konec hry';
-      msgEl.textContent = `„${pickTaunt(pools)}“`;
+      tauntText = pickTaunt(pools);
+      msgEl.textContent = `„${tauntText}“`;
+      laughDef = pickLaugh(time < 5, s < 10);
       $('score2').textContent = record ? `Skóre: ${s}` : `Skóre: ${s} · rekord: ${best}`;
       prepareLbForm(s);
     } else {
@@ -1095,12 +1224,14 @@
         wins[win.i]++;
         laugher = win;
         titleEl.textContent = `${pick(TAUNTS.winner)}: ${win.info.name}`;
-        msgEl.textContent = `🤡 ${lose.info.name}: „${pickTaunt([TAUNTS.loser])}“`;
+        tauntText = pickTaunt([TAUNTS.loser]);
+        msgEl.textContent = `🤡 ${lose.info.name}: „${tauntText}“`;
         celebrate = true;
       } else {
         laugher = pick(players);
         titleEl.textContent = 'Remíza!';
-        msgEl.textContent = `„${pickTaunt([TAUNTS.draw])}“`;
+        tauntText = pickTaunt([TAUNTS.draw]);
+        msgEl.textContent = `„${tauntText}“`;
       }
       $('score2').textContent = `${why} · ${score}`;
     }
@@ -1113,15 +1244,18 @@
 
     updateHud(true);
     playBtn.textContent = 'Hrát znovu';
-    setTimeout(() => {
+    if (!laughDef) laughDef = pickLaugh(false, false);
+    const reveal = () => {
+      if (phase !== 'over') return;
       overlay.classList.remove('hidden');
       canRestart = true;
-      showLaugh(laugher.skin, laugher.acc);
+      showLaugh(laugher.skin, laugher.acc, laughDef, tauntText);
       typeOut(msgEl);
-      sfx.laugh(); vibrate([40, 60, 40, 60, 40, 60, 80]);
       if (celebrate) { launchConfetti(160); setTimeout(() => sfx.win(), 1300); }
-      playBtn.focus();
-    }, 1100);
+      if (!touchUI) playBtn.focus();
+    };
+    // chvilku nechat doznít náraz, pak zpomalený záznam, pak výsměch
+    setTimeout(() => { if (phase === 'over') startReplay(reveal); }, 900);
   }
 
   // ---------- efekty ----------
@@ -1942,7 +2076,7 @@
       ctx.translate((Math.random() - 0.5) * k, (Math.random() - 0.5) * k);
     }
     if (cam.k > 0.001) {
-      const z = 1 + 0.14 * smooth(cam.k);
+      const z = 1 + zoomAmt * smooth(cam.k);
       ctx.translate(cam.x, cam.y); ctx.scale(z, z); ctx.translate(-cam.x, -cam.y);
     }
     ctx.drawImage(bg, 0, 0);
@@ -2048,47 +2182,140 @@
   }
 
   const lc = $('laugh'), lctx = lc.getContext('2d');
-  let laughOn = false, laughSkin = 'classic', laughAcc = 'none', laughStart = 0;
-  function showLaugh(skin, acc) {
-    laughOn = true; laughSkin = skin; laughAcc = acc; laughStart = performance.now();
+  let laughOn = false, laughSkin = 'classic', laughAcc = 'none', laughStart = 0, laughDef = null;
+  let laughFx = [], laughTimers = [], beatsDone = 0, spat = false, lastLaughT = 0, tearAt = 0;
+  function showLaugh(skin, acc, def, taunt) {
+    laughOn = true; laughSkin = skin; laughAcc = acc; laughStart = performance.now(); laughDef = def || LAUGHS[0];
+    laughFx = []; beatsDone = 0; spat = false; lastLaughT = 0; tearAt = 0;
     heroEl.classList.add('hidden'); lc.classList.remove('hidden'); overlay.classList.add('over');
     const dpr = DPR();
     lc.width = Math.round(lc.clientWidth * dpr); lc.height = Math.round(lc.clientHeight * dpr);
+    laughTimers.forEach(clearTimeout);
+    const L = laughDef, at = (ms, f) => laughTimers.push(setTimeout(() => { if (laughOn) f(); }, ms));
+    at(LAUGH_DELAY * 1000 - 300, pfff);
+    at(LAUGH_DELAY * 1000, () => { playLaugh(L); vibrate(laughVibration(L)); });
   }
   function hideLaugh() {
     laughOn = false;
+    laughTimers.forEach(clearTimeout); laughTimers = [];
+    stopLaughSound();
+    try { if (canVibrate) navigator.vibrate(0); } catch (e) {}
     clearInterval(typeTimer);
     heroEl.classList.remove('hidden'); lc.classList.add('hidden'); overlay.classList.remove('over');
   }
+  // Had se zarazí → vyprskne smíchy → válí se, buší ocasem do země (v rytmu smíchu), brečí smíchy a ukazuje na hráče
   function drawLaugh(now) {
-    const W = lc.width, H = lc.height;
-    lctx.setTransform(1, 0, 0, 1, 0, 0);
-    lctx.clearRect(0, 0, W, H);
-    const c = Math.min(H / 3.2, W / 10), n = 8, gap = c * 0.78;
-    const bounce = -Math.abs(Math.sin(now / 150)) * c * 0.35;
-    const headX = W / 2 + (n - 1) * gap / 2 - c * 1.1;
+    const W = lc.width, H = lc.height, g = lctx;
+    const el = (now - laughStart) / 1000, dt = Math.min(0.05, Math.max(0, el - lastLaughT)); lastLaughT = el;
+    const tA = (el - LAUGH_DELAY) * 1000;                // čas ve smíchu (ms)
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.clearRect(0, 0, W, H);
+    const c = Math.min(H / 3.6, W / 10.5), n = 8, gap = c * 0.78;
+    const ground = H - c * 0.42;
+    const beats = laughDef ? laughDef.beats : [];
+    // nový náraz smíchu = úder ocasem
+    let slam = 0, lift = 0, beatPow = 0;
+    for (let b = 0; b < beats.length; b++) {
+      const [st, len] = beats[b], d = tA - st;
+      if (d > -200 && d < 0) lift = Math.max(lift, 1 + d / 200);           // ocas se zvedá
+      if (d >= 0 && d < 90) slam = Math.max(slam, 1 - d / 90);              // a práskne
+      if (d >= 0 && d < len + 120) beatPow = Math.max(beatPow, 1 - d / (len + 120));
+    }
+    while (beatsDone < beats.length && tA >= beats[beatsDone][0]) {
+      beatsDone++;
+      if (el > 0.2) {
+        const tx = W / 2 - (n - 1) * gap / 2 - c * 0.2;
+        for (let k = 0; k < 7; k++) laughFx.push({ x: tx + (Math.random() - .5) * c, y: ground, vx: (Math.random() - .5) * c * 4, vy: -Math.random() * c * 3, g: c * 9, life: 0.5, r: c * (0.08 + Math.random() * 0.1), col: 'rgba(190,170,140,.8)' });
+        laughFx.push({ txt: pick(['BUM', 'BUCH', 'ŤUK']), x: tx - c * 0.4, y: ground - c * 0.9, vx: 0, vy: -c * 1.2, g: 0, life: 0.55, r: c * 0.42, col: '#fde047' });
+        laughFx.push({ txt: 'HA', x: W / 2 + (Math.random() - .3) * c * 3, y: c * 0.9, vx: (Math.random() - .5) * c, vy: -c * 1.4, g: 0, life: 0.8, r: c * (0.6 + Math.random() * 0.3), col: pick(['#fde047', '#f472b6', '#4ade80', '#22d3ee']), rot: (Math.random() - .5) * 0.6 });
+        if (beatsDone % 2) thump();
+      }
+    }
+    // fáze
+    let mood = 'laugh', jerk = 0, roll = 0, rot = 0, bob = 0, wigAmp = 0.55, look = { x: 0.3, y: 0.95 };
+    if (el < 0.45) {                                    // 1) zarazí se
+      mood = 'scared'; wigAmp = 0.06 * (1 - el / 0.45); bob = 0;
+      look = { x: 0.2, y: 1 };
+    } else if (el < LAUGH_DELAY + 0.1) {                // 2) vyprskne smíchy
+      const k = (el - 0.45) / (LAUGH_DELAY + 0.1 - 0.45);
+      jerk = Math.sin(Math.min(1, k * 1.6) * Math.PI) * c * 0.45; wigAmp = 0.2;
+      if (!spat) {
+        spat = true;
+        const hx = W / 2 + (n - 1) * gap / 2 - c * 1.1 + c * 0.5, hy = ground - c * 0.9;
+        for (let q = 0; q < 18; q++) laughFx.push({ x: hx, y: hy, vx: c * (2 + Math.random() * 5), vy: -c * (Math.random() * 4 - 0.5), g: c * 10, life: 0.7, r: c * (0.05 + Math.random() * 0.08), col: q % 3 ? '#bae6fd' : '#ffffff' });
+        laughFx.push({ txt: 'PFFF!', x: hx + c * 1.6, y: hy - c * 1.0, vx: c, vy: -c * 0.8, g: 0, life: 0.7, r: c * 0.5, col: '#7dd3fc' });
+      }
+    } else {                                            // 3) válí se smíchy
+      const r = el - LAUGH_DELAY - 0.1;
+      roll = r * 1.9;                                   // převaluje se na záda a zpátky
+      rot = Math.sin(r * 1.7) * 0.22;
+      bob = -Math.abs(Math.sin(r * 9)) * c * 0.22 - beatPow * c * 0.25;
+      wigAmp = 0.45 + beatPow * 0.4;
+      if (el > tearAt) {                                // slzy smíchy odlétají
+        tearAt = el + 0.22;
+        const hx = W / 2 + (n - 1) * gap / 2 - c * 1.1, hy = ground - c * 1.0;
+        laughFx.push({ x: hx + (Math.random() - .5) * c * 0.6, y: hy - c * 0.3, vx: (Math.random() - .5) * c * 4, vy: -c * (1.5 + Math.random() * 2), g: c * 9, life: 0.8, r: c * 0.07, col: '#7dd3fc', tear: true });
+      }
+    }
+    // tělo
+    const cx = W / 2, cy = ground - c * 0.75 + bob;
+    const headX = (n - 1) * gap / 2 - c * 1.1 + jerk;
     const pts = [];
     for (let i = 0; i < n; i++) {
-      const wig = Math.sin(i * 1.1 - now / 85) * c * 0.55 * Math.min(1, i / 2);   // kroutí se smíchy
-      pts.push({ x: headX - i * gap, y: H / 2 + c * 0.35 + wig + bounce * (1 - i / n), i });
+      const wig = Math.sin(i * 1.1 - now / 85) * c * wigAmp * Math.min(1, i / 2);
+      let y = wig;
+      const tk = Math.max(0, (i - (n - 4)) / 3);       // konec ocasu: zvedne se a práskne o zem
+      y += -lift * tk * tk * c * 1.6 + slam * tk * c * 0.25;
+      pts.push({ x: headX - i * gap, y, i });
     }
+    const sy0 = Math.cos(roll), sy = Math.sign(sy0 || 1) * Math.max(0.62, Math.abs(sy0));
+    // stín
+    g.fillStyle = 'rgba(0,0,0,0.28)';
+    g.beginPath(); g.ellipse(cx, ground + c * 0.12, (n * gap) / 2 + c * 0.3, c * 0.16, 0, 0, TAU); g.fill();
+    const sh = slam * c * 0.08;
+    g.save();
+    g.translate(cx + (Math.random() - .5) * sh, cy + (Math.random() - .5) * sh);
+    g.rotate(rot); g.scale(1, sy);
     const fp = { skin: laughSkin, acc: laughAcc, dir: { x: 1, y: 0 }, bulges: [], i: 0 };
-    renderSnake(lctx, c, pts, fp, now, { mood: 'laugh', look: { x: 1, y: 0 }, blink: false, mouth: false, alpha: 1, glowColor: null });
-    // ukazuje na hráče
-    const h = pts[0];
-    emoji(lctx, '🫵', h.x + c * 1.25 + Math.sin(now / 110) * c * 0.12, h.y - c * 0.1 + Math.cos(now / 110) * c * 0.08, c * 1.1, Math.sin(now / 160) * 0.25);
-    // HA HA HA
-    lctx.textAlign = 'center'; lctx.textBaseline = 'middle'; lctx.lineJoin = 'round';
-    const cols = ['#fde047', '#f472b6', '#4ade80'];
-    for (let k = 0; k < 3; k++) {
-      const ph = ((now - laughStart) / 700 + k / 3) % 1;
-      const x = h.x - c * 0.6 + k * c * 1.0, y = c * 0.9 - ph * c * 0.6;
-      lctx.save(); lctx.globalAlpha = Math.sin(ph * Math.PI);
-      lctx.translate(x, y); lctx.rotate((k - 1) * 0.25 + Math.sin(now / 90 + k) * 0.1);
-      lctx.font = `700 ${c * (0.7 + 0.2 * Math.sin(ph * Math.PI))}px ${FONT}`;
-      lctx.lineWidth = c * 0.16; lctx.strokeStyle = 'rgba(0,0,0,0.6)'; lctx.strokeText('HA', 0, 0);
-      lctx.fillStyle = cols[k]; lctx.fillText('HA', 0, 0);
-      lctx.restore();
+    renderSnake(g, c, pts, fp, now, { mood, look, blink: false, mouth: false, alpha: 1, glowColor: null });
+    g.restore();
+    // hlava na obrazovce (kvůli prstu)
+    const hx0 = pts[0].x, hy0 = pts[0].y * sy;
+    const hx = cx + hx0 * Math.cos(rot) - hy0 * Math.sin(rot), hy = cy + hx0 * Math.sin(rot) + hy0 * Math.cos(rot);
+    if (el > 0.25) {                                    // ukazuje na hráče
+      const pulse = 1 + beatPow * 0.25;
+      emoji(g, '🫵', hx + c * 1.25 + Math.sin(now / 110) * c * 0.12, hy - c * 0.15 + Math.cos(now / 110) * c * 0.08, c * 1.05 * pulse, Math.sin(now / 160) * 0.25);
+    } else {
+      g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.font = `800 ${c * 0.9}px ${FONT}`; g.fillStyle = '#fde047';
+      g.fillText('!', hx + c * 0.2, hy - c * 1.3 - Math.sin(el / 0.45 * Math.PI) * c * 0.3);
+    }
+    // efekty (kapky, prach, nápisy)
+    g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
+    for (const f of laughFx) {
+      f.x += f.vx * dt; f.y += f.vy * dt; f.vy += f.g * dt; f.life -= dt;
+      if (!f.txt && f.y > ground + c * 0.1) { f.y = ground + c * 0.1; f.vy *= -0.3; f.vx *= 0.6; }
+      const a = Math.max(0, Math.min(1, f.life * 2.5));
+      g.globalAlpha = a;
+      if (f.txt) {
+        g.save(); g.translate(f.x, f.y); g.rotate(f.rot || 0);
+        g.font = `700 ${f.r}px ${FONT}`; g.lineWidth = f.r * 0.22; g.strokeStyle = 'rgba(0,0,0,.65)';
+        g.strokeText(f.txt, 0, 0); g.fillStyle = f.col; g.fillText(f.txt, 0, 0); g.restore();
+      } else {
+        g.fillStyle = f.col; g.beginPath();
+        if (f.tear) g.ellipse(f.x, f.y, f.r * 0.8, f.r * 1.2, Math.atan2(f.vy, f.vx) + Math.PI / 2, 0, TAU);
+        else g.arc(f.x, f.y, f.r, 0, TAU);
+        g.fill();
+      }
+    }
+    g.globalAlpha = 1;
+    laughFx = laughFx.filter(f => f.life > 0);
+    if (laughFx.length > 120) laughFx.splice(0, laughFx.length - 120);
+    // když chybí nahrávka (bez rytmu), aspoň plynulé HA HA
+    if (!beats.length && el > LAUGH_DELAY) {
+      const ph = ((el - LAUGH_DELAY) / 0.7) % 1;
+      g.globalAlpha = Math.sin(ph * Math.PI); g.font = `700 ${c * 0.7}px ${FONT}`; g.fillStyle = '#fde047';
+      g.fillText('HA', hx, c * 0.9 - ph * c * 0.6); g.globalAlpha = 1;
     }
   }
 
@@ -2254,7 +2481,7 @@
     updateHalves();
     const playing = phase === 'play' && !paused;
     if (playing !== bodyPlaying) { bodyPlaying = playing; document.body.classList.toggle('playing', playing); }
-    const fxDt = now < slowmoUntil ? dt * 0.3 : dt;
+    const fxDt = now < slowmoUntil ? dt * 0.3 : replay ? dt * REPLAY_RATE : dt;
     if (!paused) {
       if (phase === 'countdown') {
         countAcc += dt;
@@ -2295,9 +2522,10 @@
         if (f.x < 0) f.x += 1; if (f.x > 1) f.x -= 1; if (f.y < 0) f.y += 1; if (f.y > 1) f.y -= 1;
       }
     }
-    cam.k += (cam.target - cam.k) * Math.min(1, dt * 6);
+    if (replay) updateReplay(dt, now);
+    cam.k += (cam.target - cam.k) * Math.min(1, dt * (replay ? 2.5 : 6));
     updateConfetti(dt);
-    draw(now);
+    if (replay) drawReplay(now); else draw(now);
     if (wardrobeOpen) drawPreview(now);
     if (laughOn && !overlay.classList.contains('hidden')) drawLaugh(now);
   }
@@ -2389,6 +2617,7 @@
   const WASD = { KeyW: [0, -1], KeyS: [0, 1], KeyA: [-1, 0], KeyD: [1, 0] };
   window.addEventListener('keydown', e => {
     if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;   // psaní jména
+    if (replay && ['Space', 'Enter', 'Escape'].includes(e.code)) { e.preventDefault(); finishReplay(); return; }
     if (ARROWS[e.code]) { e.preventDefault(); if (!paused) setDir(0, ...ARROWS[e.code]); }
     else if (WASD[e.code]) { if (!paused) setDir(mode === 2 ? 1 : 0, ...WASD[e.code]); }
     else if (e.code === 'Space') { e.preventDefault(); togglePause(); }
@@ -2419,6 +2648,7 @@
     s.x = x; s.y = y;
   }
   window.addEventListener('pointerdown', e => {
+    if (replay && !inUI(e.target)) { finishReplay(); return; }      // klepnutí přeskočí záznam
     if (e.pointerType === 'mouse' || inUI(e.target)) return;
     swipes.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, t: e.timeStamp, pi: swipePlayer(e.clientX), last: null, turned: false });
   }, { passive: true });

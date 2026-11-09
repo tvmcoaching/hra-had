@@ -1,8 +1,9 @@
 // Had – offline režim. Při změně hry zvyš číslo verze, ať se stáhne nová.
-const VERSION = 'had-v3';
+const VERSION = 'had-v5';
 const CORE = ['./', './index.html', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png',
-  './icons/apple-touch-icon.png', './icons/favicon-32.png'];
+  './icons/apple-touch-icon.png', './icons/favicon-32.png',
+  './zvuky/smich-1.mp3', './zvuky/smich-2.mp3', './zvuky/smich-3.mp3', './zvuky/smich-4.mp3', './zvuky/smich-5.mp3'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(CORE)).then(() => self.skipWaiting()));
