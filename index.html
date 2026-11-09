@@ -123,6 +123,27 @@
   .hint { color: var(--muted); font-size: 13px; text-align: center; max-width: 500px; }
   kbd { font-family: inherit; font-size: 12px; background: rgba(255,255,255,.08); border: 1px solid var(--glass-border); border-bottom-width: 2px; border-radius: 6px; padding: 1px 6px; }
 
+  .lbform { display: flex; gap: 8px; width: 100%; max-width: 340px; }
+  .lbform.hidden { display: none; }
+  .lbform input {
+    flex: 1; min-width: 0; font: inherit; font-size: 16px; color: var(--text);
+    background: rgba(0,0,0,.35); border: 1px solid var(--glass-border); border-radius: 999px;
+    padding: 10px 16px; outline: none; user-select: text; -webkit-user-select: text;
+  }
+  .lbform input:focus { border-color: #4ade80; box-shadow: 0 0 0 3px rgba(74,222,128,.2); }
+  .lbform button { padding: 10px 20px; font-size: 16px; animation: none; }
+  .lbform button:disabled { opacity: .6; cursor: default; }
+  .lblist { list-style: none; margin: 0; padding: 0; width: 100%; max-width: 340px; display: flex; flex-direction: column; gap: 6px; }
+  .lblist li {
+    display: grid; grid-template-columns: 34px 1fr auto; align-items: center; gap: 8px;
+    background: rgba(255,255,255,.05); border: 1px solid var(--glass-border); border-radius: 12px; padding: 8px 12px; text-align: left;
+  }
+  .lblist li .rk { font-weight: 700; color: var(--muted); text-align: center; }
+  .lblist li .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lblist li .sc { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .lblist li.me { border-color: #fde047; background: rgba(253,224,71,.12); animation: meGlow 1.4s ease-in-out infinite; }
+  @keyframes meGlow { 50% { box-shadow: 0 0 18px rgba(253,224,71,.35); } }
+  #lbStatus:empty { display: none; }
   #laugh { width: 100%; max-width: 320px; height: 120px; flex-shrink: 0; }
   #laugh.hidden, .hero.hidden { display: none; }
   .overlay.over .legend, .overlay.over .tip { display: none; }
@@ -168,6 +189,10 @@
       <p id="msg">Sbírej ovoce a nenaraz do zdi ani do hada.</p>
       <p class="score2" id="score2"></p>
       <p class="unlock" id="unlock"></p>
+      <form class="lbform hidden" id="lbForm" autocomplete="off">
+        <input id="lbName" maxlength="15" placeholder="Tvoje jméno do žebříčku" enterkeyhint="send" spellcheck="false">
+        <button type="submit" id="lbSend">Zapsat</button>
+      </form>
       <div class="seg" id="modeSeg">
         <button data-mode="1">1 hráč</button>
         <button data-mode="2">2 hráči</button>
@@ -175,6 +200,7 @@
       <div class="row">
         <button id="play">Hrát</button>
         <button id="wardrobeBtn" class="secondary">🎨 Šatník</button>
+        <button id="lbBtn" class="secondary">🏆 TOP 10</button>
       </div>
       <div class="legend">
         <span>🍎 +1</span><span>⭐ +5</span><span>🐭 +3 chyť ji!</span>
@@ -182,6 +208,13 @@
         <span>🧲 přitáhne jídlo</span><span>🌀 portál</span><span>💣 nejez!</span>
       </div>
       <div class="tip">Jez rychle za sebou → combo ×2 až ×5 · občas přijde ovocná horečka 🍉</div>
+    </div>
+
+    <div class="overlay top-align hidden" id="lbPanel">
+      <h2>🏆 TOP 10</h2>
+      <p id="lbStatus"></p>
+      <ol class="lblist" id="lbList"></ol>
+      <button id="lbBack" class="secondary">Zpět</button>
     </div>
 
     <div class="overlay top-align hidden" id="wardrobe">
@@ -356,6 +389,12 @@
     self: ['Had si kousl do ocasu. Au! 🙃', 'Zamotaný jak sluchátka v kapse.', 'Vlastní ocas – největší nepřítel.', 'Takhle se uzel neváže.'],
     bomb: ['BUM! 💥 Bomby se nejí.', 'Tohle nebyla švestka. 💣', 'Výbušná svačinka.', 'Pálivější než chilli.'],
   };
+
+  // ===== Online žebříček (Supabase) =====
+  // Sem patří JEN veřejný klíč (Publishable key „sb_publishable_…“ nebo starší „anon“).
+  // Tajný klíč (Secret key „sb_secret_…“ / „service_role“) sem NIKDY nepatří!
+  const SUPABASE_URL = '';   // např. 'https://abcdefghijkl.supabase.co'
+  const SUPABASE_KEY = '';   // např. 'sb_publishable_…'
 
   const $ = id => document.getElementById(id);
   const canvas = $('c'), ctx = canvas.getContext('2d');
@@ -784,6 +823,7 @@
   }
 
   function endGame(alive, dying) {
+    hideLbForm();
     phase = 'over';
     canRestart = false;
     let celebrate = false;
@@ -800,6 +840,7 @@
       } else titleEl.textContent = 'Konec hry';
       msgEl.textContent = `„${pickTaunt(pools)}“`;
       $('score2').textContent = record ? `Skóre: ${s}` : `Skóre: ${s} · rekord: ${best}`;
+      prepareLbForm(s);
     } else {
       const headOn = dying.some(d => d.cause === 'head');
       const why = headOn ? 'Čelní srážka! 💥' : dying.map(d => deathLine(d.p)).join(' ');
@@ -1845,6 +1886,101 @@
   $('wardrobeBtn').addEventListener('click', () => { audio(); openWardrobe(); });
   $('wDone').addEventListener('click', closeWardrobe);
 
+  // ---------- online žebříček ----------
+  const lbKeyIsSecret = (() => {
+    if (/^sb_secret_/i.test(SUPABASE_KEY)) return true;
+    try { return /service_role/.test(atob(SUPABASE_KEY.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))); } catch (e) { return false; }
+  })();
+  if (lbKeyIsSecret) console.error('Žebříček: v kódu je TAJNÝ klíč! Žebříček je vypnutý. Použij Publishable / anon klíč.');
+  const lbReady = !!(SUPABASE_URL && SUPABASE_KEY) && !lbKeyIsSecret;
+  let lbOpen = false, lbLastScore = 0, lbSubmitted = false;
+  const lbPanel = $('lbPanel'), lbForm = $('lbForm'), lbName = $('lbName');
+
+  async function sb(path, opt = {}) {
+    const headers = { apikey: SUPABASE_KEY, 'Content-Type': 'application/json', ...(opt.headers || {}) };
+    if (SUPABASE_KEY.startsWith('eyJ')) headers.Authorization = 'Bearer ' + SUPABASE_KEY;   // starší „anon“ klíč
+    const ctrl = new AbortController(), timer = setTimeout(() => ctrl.abort(), 8000);
+    try {
+      const res = await fetch(SUPABASE_URL.replace(/\/$/, '') + '/rest/v1/' + path, { ...opt, headers, signal: ctrl.signal });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res;
+    } finally { clearTimeout(timer); }
+  }
+  const cleanName = v => [...v.replace(/[\u0000-\u001f\u007f]/g, '').replace(/\s+/g, ' ').trim()].slice(0, 15).join('').trim();
+  async function lbTop() {
+    const res = await sb('scores?select=id,name,score&order=score.desc,id.asc&limit=10');
+    return res.json();
+  }
+  async function lbSubmit(name, score) {
+    const res = await sb('scores?select=id', { method: 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify({ name, score }) });
+    const rows = await res.json();
+    return rows[0] && rows[0].id;
+  }
+  async function lbRank(score) {
+    const res = await sb('scores?select=id&score=gt.' + score + '&limit=1', { headers: { Prefer: 'count=exact' } });
+    const m = /\/(\d+)/.exec(res.headers.get('content-range') || '');
+    return m ? +m[1] + 1 : null;
+  }
+
+  function prepareLbForm(score) {
+    lbLastScore = score; lbSubmitted = false;
+    lbForm.classList.toggle('hidden', !(lbReady && score > 0));
+    $('lbSend').disabled = false; $('lbSend').textContent = 'Zapsat';
+    lbName.value = store.get('had-name', '');
+  }
+  function hideLbForm() { lbForm.classList.add('hidden'); }
+
+  async function openLb(myId = null, myScore = null) {
+    lbOpen = true;
+    overlay.classList.add('hidden'); lbPanel.classList.remove('hidden');
+    const st = $('lbStatus'), list = $('lbList');
+    list.innerHTML = '';
+    if (!lbReady) { st.textContent = 'Online žebříček ještě není zapnutý. 🙂'; return; }
+    st.textContent = 'Načítám…';
+    try {
+      const [rows, rank] = await Promise.all([lbTop(), myScore ? lbRank(myScore).catch(() => null) : null]);
+      if (!lbOpen) return;
+      st.textContent = rows.length ? '' : 'Zatím tu nikdo není. Buď první! 🥇';
+      const medals = ['🥇', '🥈', '🥉'];
+      rows.forEach((r, k) => {
+        const li = document.createElement('li');
+        if (myId && r.id === myId) li.className = 'me';
+        const rk = document.createElement('span'); rk.className = 'rk'; rk.textContent = medals[k] || (k + 1) + '.';
+        const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = r.name;
+        const sc = document.createElement('span'); sc.className = 'sc'; sc.textContent = r.score;
+        li.append(rk, nm, sc); list.appendChild(li);
+      });
+      if (myId && !rows.some(r => r.id === myId) && rank) st.textContent = `Tvoje skóre ${myScore} je na ${rank}. místě. Do TOP 10 ještě kousek! 💪`;
+      else if (myId) { launchConfetti(80); sfx.milestone(); }
+    } catch (e) {
+      if (lbOpen) st.textContent = 'Žebříček se nepodařilo načíst. Zkontroluj internet a zkus to znovu.';
+    }
+  }
+  function closeLb() {
+    lbOpen = false;
+    lbPanel.classList.add('hidden'); overlay.classList.remove('hidden');
+  }
+  lbForm.addEventListener('submit', async e => {
+    e.preventDefault();
+    if (lbSubmitted || !lbReady) return;
+    const name = cleanName(lbName.value);
+    if (!name) { lbName.focus(); lbName.placeholder = 'Napiš jméno (max 15 znaků)'; return; }
+    const btn = $('lbSend');
+    btn.disabled = true; btn.textContent = 'Posílám…';
+    try {
+      const id = await lbSubmit(name, lbLastScore);
+      lbSubmitted = true;
+      store.set('had-name', name);
+      btn.textContent = 'Zapsáno ✓';
+      lbName.blur();
+      openLb(id, lbLastScore);
+    } catch (err) {
+      btn.disabled = false; btn.textContent = 'Zkusit znovu';
+    }
+  });
+  $('lbBtn').addEventListener('click', () => openLb());
+  $('lbBack').addEventListener('click', closeLb);
+
   // ---------- smyčka ----------
   let last = performance.now();
   function frame(now) {
@@ -1950,6 +2086,7 @@
       unlockEl.textContent = '';
       $('score2').textContent = '';
       hideLaugh();
+      hideLbForm();
       playBtn.textContent = 'Hrát';
     }
     setHint();
@@ -1963,18 +2100,19 @@
     $('pause').textContent = paused ? '▶️' : '⏸';
   }
   function tryStart() {
-    if ((phase === 'menu' || phase === 'over') && canRestart && !wardrobeOpen) { newGame(); $('pause').textContent = '⏸'; }
+    if ((phase === 'menu' || phase === 'over') && canRestart && !wardrobeOpen && !lbOpen) { newGame(); $('pause').textContent = '⏸'; }
   }
 
   // ---------- ovládání ----------
   const ARROWS = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] };
   const WASD = { KeyW: [0, -1], KeyS: [0, 1], KeyA: [-1, 0], KeyD: [1, 0] };
   window.addEventListener('keydown', e => {
+    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;   // psaní jména
     if (ARROWS[e.code]) { e.preventDefault(); if (!paused) setDir(0, ...ARROWS[e.code]); }
     else if (WASD[e.code]) { if (!paused) setDir(mode === 2 ? 1 : 0, ...WASD[e.code]); }
     else if (e.code === 'Space') { e.preventDefault(); togglePause(); }
-    else if (e.code === 'Enter') { if (phase === 'menu' || phase === 'over') { e.preventDefault(); if (wardrobeOpen) closeWardrobe(); else tryStart(); } }
-    else if (e.code === 'Escape') { if (wardrobeOpen) closeWardrobe(); }
+    else if (e.code === 'Enter') { if (phase === 'menu' || phase === 'over') { e.preventDefault(); if (lbOpen) closeLb(); else if (wardrobeOpen) closeWardrobe(); else tryStart(); } }
+    else if (e.code === 'Escape') { if (lbOpen) closeLb(); else if (wardrobeOpen) closeWardrobe(); }
     else if (e.code === 'KeyM') setMuted(!muted);
     else if (e.code === 'KeyH') setMusic(!musicOn);
   });
