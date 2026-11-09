@@ -123,6 +123,12 @@
   .hint { color: var(--muted); font-size: 13px; text-align: center; max-width: 500px; }
   kbd { font-family: inherit; font-size: 12px; background: rgba(255,255,255,.08); border: 1px solid var(--glass-border); border-bottom-width: 2px; border-radius: 6px; padding: 1px 6px; }
 
+  #laugh { width: 100%; max-width: 320px; height: 120px; flex-shrink: 0; }
+  #laugh.hidden, .hero.hidden { display: none; }
+  .overlay.over .legend, .overlay.over .tip { display: none; }
+  .overlay.over #msg { color: var(--text); font-size: 18px; font-weight: 600; font-style: italic; }
+  .overlay p.score2 { font-size: 14px; }
+  .overlay p.score2:empty { display: none; }
   #preview { width: 100%; max-width: 340px; height: 112px; flex-shrink: 0; border-radius: 14px; background: radial-gradient(ellipse at 50% 60%, #16302a, #0e1a1a); border: 1px solid var(--glass-border); }
   .wlabel { font-size: 12px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted); text-align: left; max-width: 340px; width: 100%; margin: 0 auto; display: flex; justify-content: space-between; }
   .wlabel span { text-transform: none; letter-spacing: 0; color: #fde047; }
@@ -157,8 +163,10 @@
 
     <div class="overlay" id="overlay">
       <div class="hero" id="hero">🐍</div>
+      <canvas id="laugh" class="hidden"></canvas>
       <h2 id="title">Had</h2>
       <p id="msg">Sbírej ovoce a nenaraz do zdi ani do hada.</p>
+      <p class="score2" id="score2"></p>
       <p class="unlock" id="unlock"></p>
       <div class="seg" id="modeSeg">
         <button data-mode="1">1 hráč</button>
@@ -265,6 +273,14 @@
   const MILESTONES = [[10, 'Pěkně! 👍'], [25, 'Super! 🔥'], [50, 'Neuvěřitelné! 🤩'], [75, 'Mašina! 🚀'], [100, 'STOVKA! 💯'], [150, 'Šampion! 🏆'], [200, 'LEGENDA! 👑'], [300, 'Bůh hadů! 🐍']];
   const pick = a => a[Math.floor(Math.random() * a.length)];
 
+  const TAUNTS = {
+    wall: ['Ta zeď tam byla celou dobu. Celou. Dobu.', 'Zeď 1 : Ty 0', 'GPS ti asi došla baterka.', 'Zeď si tě zapíše do deníčku jako nejlepší den svého života.'],
+    self: ['Ty ses fakt snědl. Sám. Nikdo tě nenutil.', 'Největší nepřítel hada? Ty.', 'Gratuluju, jsi první had s autoimunitní chorobou.', 'Kanibalismus level: úplně zbytečnej.'],
+    fast: ['To byl rekord. Bohužel v rychlosti umírání.', 'Ani jsem nestihl dojíst popcorn.', 'Hraješ to poprvý, nebo jsi takhle normálně?', 'Moje babička hraje se zavřenýma očima a vydrží dýl.'],
+    low: ['Had umřel hlady. Pod tvým vedením.', 'Tohle skóre bych ani mámě neukazoval.', 'Klávesnice podala stížnost.', 'Ovoce se ti vysmívá. A to nemá ani pusu.'],
+    high: ['Dobrý. Fakt dobrý. Škoda, že ses na konci stejně zabil. 😏', 'Skoro legenda. Klíčový slovo: skoro.', 'Celou dobu jsi byl hrdina… a pak tohle.'],
+    record: ['Nový rekord! Ale pořád umřel, takže se moc nenaparuj.'],
+  };
   const MSG1 = {
     wall: ['Zeď byla rychlejší. 🧱', 'Bum do zdi! Zeď je v pohodě.', 'Zeď: 1, had: 0.', 'Tahle zeď tu byla už předtím…'],
     self: ['Had si kousl do ocasu. Au! 🙃', 'Zamotaný jak sluchátka v kapse.', 'Vlastní ocas – největší nepřítel.', 'Takhle se uzel neváže.'],
@@ -352,6 +368,31 @@
     portal(){ tone(300, 1200, 0.35, 'sine', 0.1); tone(1200, 300, 0.35, 'sine', 0.05, 0.1); },
     rattle(){ for (let k = 0; k < 5; k++) noise(0.04, 0.18, k * 0.055, 3500, 'highpass'); },
     die()   { tone(320, 45, 0.55, 'sawtooth', 0.09); },
+    laugh() {
+      if (muted || !audio()) return;
+      const a = actx;
+      let t = a.currentTime + 0.05;
+      const base = 250 + Math.random() * 70, n = 7 + Math.floor(Math.random() * 3);
+      for (let k = 0; k < n; k++) {
+        const dur = 0.1 + Math.random() * 0.04, f0 = base * (1.18 - k * 0.035) * (k % 2 ? 0.95 : 1);
+        const o = a.createOscillator(); o.type = 'sawtooth';
+        o.frequency.setValueAtTime(f0 * 1.12, t); o.frequency.exponentialRampToValueAtTime(f0 * 0.82, t + dur);
+        const vib = a.createOscillator(), vg = a.createGain(); vib.frequency.value = 26; vg.gain.value = f0 * 0.05;
+        vib.connect(vg).connect(o.frequency);
+        const f1 = a.createBiquadFilter(); f1.type = 'bandpass'; f1.frequency.value = 820; f1.Q.value = 4;
+        const f2 = a.createBiquadFilter(); f2.type = 'bandpass'; f2.frequency.value = 1300; f2.Q.value = 5;
+        const lp = a.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1100;
+        const g = a.createGain();
+        g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.55, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        o.connect(f1); o.connect(f2); f1.connect(g); f2.connect(g);
+        const body = a.createGain(); body.gain.value = 0.12; o.connect(lp).connect(body).connect(g);
+        g.connect(master);
+        o.start(t); o.stop(t + dur + 0.03); vib.start(t); vib.stop(t + dur + 0.03);
+        noiseAt(Math.max(a.currentTime, t - 0.03), 0.06, 0.09, 1600, 'bandpass');
+        t += dur + 0.045 + Math.random() * 0.025;
+      }
+      noiseAt(t + 0.06, 0.4, 0.07, 2600, 'bandpass');   // nádech po smíchu
+    },
     pop()   { noise(0.15, 0.2, 0, 2000, 'bandpass'); tone(600, 120, 0.15, 'triangle', 0.08); },
     boom()  { noise(0.8, 0.5); tone(120, 30, 0.6, 'sine', 0.3); },
     count() { tone(440, 440, 0.12, 'sine', 0.14); },
@@ -639,6 +680,15 @@
     }
   }
 
+  let lastTaunt = store.get('had-last-taunt', '');
+  function pickTaunt(pools) {   // nikdy stejná hláška dvakrát po sobě
+    for (const pool of pools) {
+      const opts = pool.filter(t => t !== lastTaunt);
+      if (opts.length) { lastTaunt = pick(opts); store.set('had-last-taunt', lastTaunt); return lastTaunt; }
+    }
+    return lastTaunt;
+  }
+
   function deathLine(p) {
     const n = p.info.name;
     switch (p.cause) {
@@ -654,24 +704,36 @@
     phase = 'over';
     canRestart = false;
     let celebrate = false;
+    let laugher = players[0];
     if (mode === 1) {
       const p = players[0], s = p.score;
-      if (s > best) {
+      const record = s > best;
+      const general = [...(TAUNTS[p.cause] || MSG1[p.cause] || TAUNTS.wall), ...(s < 10 ? TAUNTS.low : []), ...(s > 50 ? TAUNTS.high : [])];
+      const pools = record ? [TAUNTS.record, general] : time < 5 ? [TAUNTS.fast, general] : [general];
+      if (record) {
         best = s; store.set('had-best', best);
-        titleEl.textContent = 'Nový rekord! 🏆'; heroEl.textContent = '🥳';
+        titleEl.textContent = 'Nový rekord! 🏆';
         celebrate = s > 0;
-      } else { titleEl.textContent = 'Konec hry'; heroEl.textContent = pick(['😵', '🫠', '😬', '🤕']); }
-      msgEl.textContent = `${pick(MSG1[p.cause] || MSG1.wall)} Skóre: ${s}`;
+      } else titleEl.textContent = 'Konec hry';
+      msgEl.textContent = `„${pickTaunt(pools)}“`;
+      $('score2').textContent = record ? `Skóre: ${s}` : `Skóre: ${s} · rekord: ${best}`;
     } else {
-      if (alive.length === 1) {
-        wins[alive[0].i]++;
-        titleEl.textContent = `Vyhrává ${alive[0].info.name}! 🏆`;
-        heroEl.textContent = '👑';
-        celebrate = true;
-      } else { titleEl.textContent = 'Remíza!'; heroEl.textContent = '🤝'; }
       const headOn = dying.some(d => d.cause === 'head');
       const why = headOn ? 'Čelní srážka! 💥' : dying.map(d => deathLine(d.p)).join(' ');
-      msgEl.textContent = `${why}  ${PLAYERS[0].name} ${players[0].score} : ${players[1].score} ${PLAYERS[1].name}`;
+      const score = `${PLAYERS[0].name} ${players[0].score} : ${players[1].score} ${PLAYERS[1].name}`;
+      if (alive.length === 1) {
+        const win = alive[0], lose = players.find(q => q !== win);
+        wins[win.i]++;
+        laugher = win;
+        titleEl.textContent = `🏆 Král hadů: ${win.info.name}`;
+        msgEl.textContent = `🤡 ${lose.info.name}: „Druhej je první z poraženejch“`;
+        celebrate = true;
+      } else {
+        laugher = pick(players);
+        titleEl.textContent = 'Remíza!';
+        msgEl.textContent = '„Oba jste prohráli. Gratuluju, to se jen tak nevidí.“';
+      }
+      $('score2').textContent = `${why} · ${score}`;
     }
     const before = xp;
     xp += players.reduce((s, p) => s + p.score, 0);
@@ -685,7 +747,9 @@
     setTimeout(() => {
       overlay.classList.remove('hidden');
       canRestart = true;
-      if (celebrate) { launchConfetti(160); sfx.win(); }
+      showLaugh(laugher.skin, laugher.acc);
+      sfx.laugh(); vibrate([40, 60, 40, 60, 40, 60, 80]);
+      if (celebrate) { launchConfetti(160); setTimeout(() => sfx.win(), 1300); }
       playBtn.focus();
     }, 1100);
   }
@@ -1071,7 +1135,7 @@
     const toLocal = (vx, vy) => ({ x: vx * cos + vy * sin, y: -vx * sin + vy * cos });
     const lt = toLocal(LIGHT.x, LIGHT.y), down = toLocal(0, 1);
     const hw = headW / 2;
-    const shades = mood === 'chili' || (p.acc === 'shades' && mood !== 'dead' && mood !== 'ghost' && mood !== 'happy');
+    const shades = mood === 'chili' || (p.acc === 'shades' && mood !== 'dead' && mood !== 'ghost' && mood !== 'happy' && mood !== 'laugh');
 
     g.save();
     g.translate(h.x, h.y);
@@ -1115,12 +1179,20 @@
     }
     // tvářičky
     if (!skin.neon && mood !== 'dead') {
-      g.fillStyle = mood === 'dizzy' || mood === 'happy' ? 'rgba(255,90,130,0.5)' : 'rgba(255,120,150,0.3)';
+      g.fillStyle = mood === 'dizzy' || mood === 'happy' || mood === 'laugh' ? 'rgba(255,90,130,0.55)' : 'rgba(255,120,150,0.3)';
       for (const m of [1, -1]) { g.beginPath(); g.ellipse(-c * 0.08, m * hw * 0.8, c * 0.09, c * 0.06, 0, 0, TAU); g.fill(); }
     }
     // pusa
     const open = mood === 'normal' && o.mouth;
-    if (open) {
+    if (mood === 'laugh') {
+      const k = 0.75 + 0.25 * Math.abs(Math.sin(now / 70));
+      g.fillStyle = '#3b0d18';
+      g.beginPath(); g.ellipse(c * 0.32, 0, c * 0.22 * k, hw * 0.78, 0, 0, TAU); g.fill();
+      g.fillStyle = '#ff6b8a';
+      g.beginPath(); g.ellipse(c * 0.24, 0, c * 0.1 * k, hw * 0.42, 0, 0, TAU); g.fill();
+      g.fillStyle = '#fff';
+      g.fillRect(c * 0.44 * (0.9 + 0.1 * k), -hw * 0.3, c * 0.06, hw * 0.6);
+    } else if (open) {
       g.fillStyle = '#3b0d18';
       g.beginPath(); g.ellipse(c * 0.36, 0, c * 0.12, hw * 0.52, 0, 0, TAU); g.fill();
       g.fillStyle = '#ff6b8a';
@@ -1140,6 +1212,20 @@
     const E = [{ x: c * 0.06, y: -hw * 0.58 }, { x: c * 0.06, y: hw * 0.58 }];
     for (const e of E) {
       const out = Math.sign(e.y);
+      if (mood === 'laugh') {   // zmáčknuté oči a slzy smíchy
+        g.beginPath(); g.moveTo(e.x - R * 0.7, e.y - out * R * 0.5); g.lineTo(e.x + R * 0.2, e.y); g.lineTo(e.x - R * 0.7, e.y + out * R * 0.5);
+        g.strokeStyle = 'rgba(255,255,255,0.9)'; g.lineWidth = c * 0.1; g.stroke();
+        g.strokeStyle = ink; g.lineWidth = c * 0.055; g.stroke();
+        for (let k = 0; k < 2; k++) {
+          const tt = (now / 450 + k * 0.5 + (out > 0 ? 0.25 : 0)) % 1;
+          g.globalAlpha = 1 - tt;
+          g.fillStyle = '#7dd3fc';
+          const ty = e.y + out * (R * 0.8 + tt * c * 0.55), tx = e.x - R * 0.2 - tt * c * 0.2;
+          g.beginPath(); g.ellipse(tx, ty, c * 0.05, c * 0.075, 0, 0, TAU); g.fill();
+        }
+        g.globalAlpha = 1;
+        continue;
+      }
       if (mood === 'happy') {
         g.beginPath(); g.arc(e.x - R * 0.35, e.y, R * 0.8, -1.0, 1.0);
         g.strokeStyle = 'rgba(255,255,255,0.9)'; g.lineWidth = c * 0.1; g.stroke();
@@ -1584,6 +1670,50 @@
     renderSnake(pctx, c, pts, fp, now, { mood, look: { x: 1, y: 0.2 }, blink: now % 3000 < 140, mouth: false, alpha: 1, glowColor: mood === 'chili' ? '#ff7a2a' : null });
   }
 
+  const lc = $('laugh'), lctx = lc.getContext('2d');
+  let laughOn = false, laughSkin = 'classic', laughAcc = 'none', laughStart = 0;
+  function showLaugh(skin, acc) {
+    laughOn = true; laughSkin = skin; laughAcc = acc; laughStart = performance.now();
+    heroEl.classList.add('hidden'); lc.classList.remove('hidden'); overlay.classList.add('over');
+    const dpr = window.devicePixelRatio || 1;
+    lc.width = Math.round(lc.clientWidth * dpr); lc.height = Math.round(lc.clientHeight * dpr);
+  }
+  function hideLaugh() {
+    laughOn = false;
+    heroEl.classList.remove('hidden'); lc.classList.add('hidden'); overlay.classList.remove('over');
+  }
+  function drawLaugh(now) {
+    const W = lc.width, H = lc.height;
+    lctx.setTransform(1, 0, 0, 1, 0, 0);
+    lctx.clearRect(0, 0, W, H);
+    const c = Math.min(H / 3.2, W / 10), n = 8, gap = c * 0.78;
+    const bounce = -Math.abs(Math.sin(now / 150)) * c * 0.35;
+    const headX = W / 2 + (n - 1) * gap / 2 - c * 1.1;
+    const pts = [];
+    for (let i = 0; i < n; i++) {
+      const wig = Math.sin(i * 1.1 - now / 85) * c * 0.55 * Math.min(1, i / 2);   // kroutí se smíchy
+      pts.push({ x: headX - i * gap, y: H / 2 + c * 0.35 + wig + bounce * (1 - i / n), i });
+    }
+    const fp = { skin: laughSkin, acc: laughAcc, dir: { x: 1, y: 0 }, bulges: [], i: 0 };
+    renderSnake(lctx, c, pts, fp, now, { mood: 'laugh', look: { x: 1, y: 0 }, blink: false, mouth: false, alpha: 1, glowColor: null });
+    // ukazuje na hráče
+    const h = pts[0];
+    emoji(lctx, '🫵', h.x + c * 1.25 + Math.sin(now / 110) * c * 0.12, h.y - c * 0.1 + Math.cos(now / 110) * c * 0.08, c * 1.1, Math.sin(now / 160) * 0.25);
+    // HA HA HA
+    lctx.textAlign = 'center'; lctx.textBaseline = 'middle'; lctx.lineJoin = 'round';
+    const cols = ['#fde047', '#f472b6', '#4ade80'];
+    for (let k = 0; k < 3; k++) {
+      const ph = ((now - laughStart) / 700 + k / 3) % 1;
+      const x = h.x - c * 0.6 + k * c * 1.0, y = c * 0.9 - ph * c * 0.6;
+      lctx.save(); lctx.globalAlpha = Math.sin(ph * Math.PI);
+      lctx.translate(x, y); lctx.rotate((k - 1) * 0.25 + Math.sin(now / 90 + k) * 0.1);
+      lctx.font = `700 ${c * (0.7 + 0.2 * Math.sin(ph * Math.PI))}px ${FONT}`;
+      lctx.lineWidth = c * 0.16; lctx.strokeStyle = 'rgba(0,0,0,0.6)'; lctx.strokeText('HA', 0, 0);
+      lctx.fillStyle = cols[k]; lctx.fillText('HA', 0, 0);
+      lctx.restore();
+    }
+  }
+
   function buildWardrobe() {
     $('wTabs').classList.toggle('hidden', mode !== 2);
     if (mode !== 2) wTab = 0;
@@ -1680,6 +1810,7 @@
     updateConfetti(dt);
     draw(now);
     if (wardrobeOpen) drawPreview(now);
+    if (laughOn && !overlay.classList.contains('hidden')) drawLaugh(now);
     requestAnimationFrame(frame);
   }
 
@@ -1732,6 +1863,8 @@
       titleEl.textContent = m === 1 ? 'Had' : 'Hadí souboj';
       msgEl.textContent = m === 1 ? 'Sbírej ovoce a nenaraz do zdi ani do hada.' : 'Kdo první narazí, prohrál. Hráč 1 jede šipkami, hráč 2 WASD.';
       unlockEl.textContent = '';
+      $('score2').textContent = '';
+      hideLaugh();
       playBtn.textContent = 'Hrát';
     }
     setHint();
