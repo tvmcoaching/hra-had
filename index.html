@@ -2,7 +2,18 @@
 <html lang="cs">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="theme-color" content="#0b0f1a">
+<meta name="color-scheme" content="dark">
+<meta name="description" content="Had – hadí hra pro jednoho i dva hráče. Funguje i offline.">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Had">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <title>Had</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -15,19 +26,34 @@
     --text: #eef2ff;
     --muted: #94a0b8;
     --font: "Fredoka", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --sat: env(safe-area-inset-top, 0px);
+    --sar: env(safe-area-inset-right, 0px);
+    --sab: env(safe-area-inset-bottom, 0px);
+    --sal: env(safe-area-inset-left, 0px);
+    --bw: 500px;          /* šířka hrací plochy – nastavuje JS */
+    --pad: 16px;
   }
   * { box-sizing: border-box; }
   html, body {
-    margin: 0; height: 100%;
+    margin: 0; height: 100%; width: 100%;
     background: var(--bg); color: var(--text);
     font-family: var(--font);
     overscroll-behavior: none; overflow: hidden;
   }
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   body {
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    padding: 16px; gap: 12px;
+    position: fixed; inset: 0; height: 100vh; height: 100dvh;
+    display: grid; justify-items: center; align-content: center;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, var(--stage-row, 1fr)) auto auto;
+    grid-template-areas: "top" "scores" "stage" "pads" "hint";
+    padding: calc(var(--sat) + 12px) calc(var(--sar) + var(--pad)) calc(var(--sab) + 12px) calc(var(--sal) + var(--pad));
+    gap: 10px;
     touch-action: none; user-select: none; -webkit-user-select: none;
+    -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent;
   }
+  button, input, .tile { touch-action: manipulation; }
+  .stage { grid-area: stage; width: 100%; height: 100%; min-height: 0; display: flex; align-items: center; justify-content: center; }
   .blob { position: fixed; border-radius: 50%; filter: blur(90px); opacity: .45; z-index: -1; pointer-events: none; }
   .blob.a { width: 520px; height: 520px; background: #16a34a; top: -160px; left: -140px; animation: float1 22s ease-in-out infinite alternate; }
   .blob.b { width: 480px; height: 480px; background: #7c3aed; bottom: -180px; right: -120px; animation: float2 26s ease-in-out infinite alternate; }
@@ -37,7 +63,7 @@
   @keyframes float3 { to { transform: translate(-260px, 60px) scale(.85); } }
   @media (prefers-reduced-motion: reduce) { .blob { animation: none; } }
 
-  .top { display: flex; align-items: center; gap: 8px; width: min(92vw, 500px); }
+  .top { grid-area: top; display: flex; align-items: center; gap: 8px; width: var(--bw); max-width: 100%; }
   h1 { margin: 0 auto 0 0; font-size: 34px; font-weight: 700; letter-spacing: 1px; display: flex; align-items: center; gap: 8px; }
   h1 .logo { display: inline-block; animation: wiggle 2.4s ease-in-out infinite; transform-origin: 50% 80%; }
   h1 .word { background: linear-gradient(90deg, #4ade80, #22d3ee, #b388ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
@@ -45,14 +71,14 @@
 
   .icon-btn {
     background: var(--glass); border: 1px solid var(--glass-border); color: var(--text);
-    width: 44px; height: 44px; border-radius: 14px; font-size: 18px; cursor: pointer;
+    width: 46px; height: 46px; border-radius: 14px; font-size: 19px; cursor: pointer; flex-shrink: 0;
     backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
     box-shadow: none; padding: 0; animation: none;
   }
   .icon-btn:hover { background: rgba(255,255,255,.08); }
   .icon-btn.off { opacity: .45; }
 
-  .scores { display: flex; gap: 10px; width: min(92vw, 500px); }
+  .scores { grid-area: scores; display: flex; gap: 10px; width: var(--bw); max-width: 100%; }
   .score {
     flex: 1; position: relative; overflow: hidden;
     display: flex; align-items: center; justify-content: space-between; gap: 8px;
@@ -68,7 +94,7 @@
   .chips { font-size: 15px; font-weight: 600; color: var(--muted); white-space: nowrap; text-align: right; }
   .chips .combo { color: #fde047; }
 
-  .wrap { position: relative; width: min(92vw, 500px, calc(100vh - 220px)); aspect-ratio: 1; }
+  .wrap { position: relative; width: var(--bw); height: var(--bw); flex-shrink: 0; }
   .board {
     position: absolute; inset: 0; border-radius: 22px; padding: 3px;
     background: linear-gradient(135deg, rgba(74,222,128,.7), rgba(34,211,238,.4), rgba(179,136,255,.7));
@@ -79,15 +105,18 @@
   @keyframes punch { 40% { transform: scale(1.012); } }
   @keyframes punchBig { 30% { transform: scale(1.03) rotate(-.5deg); } 65% { transform: scale(.995) rotate(.3deg); } }
   canvas#c { width: 100%; height: 100%; display: block; border-radius: 19px; background: #0e1a1a; }
-  canvas#fx { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 10; }
+  canvas#fx { position: fixed; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; z-index: 30; }
 
   .overlay {
     position: absolute; inset: 3px; display: flex; flex-direction: column;
     align-items: center; justify-content: center; gap: 10px;
     background: rgba(11,15,26,.74); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
     border-radius: 19px; text-align: center; padding: 16px; overflow: auto;
-    animation: fadeIn .35s ease-out;
+    animation: fadeIn .35s ease-out; z-index: 20;
+    touch-action: pan-y; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
   }
+  .overlay > * { flex-shrink: 0; }
+  .ovl-l, .ovl-r { display: contents; }
   .overlay.top-align { justify-content: flex-start; }
   @keyframes fadeIn { from { opacity: 0; transform: scale(.97); } }
   .overlay.hidden { display: none; }
@@ -116,11 +145,12 @@
   #play { animation: glow 1.8s ease-in-out infinite; }
   @keyframes glow { 50% { box-shadow: 0 8px 34px rgba(74,222,128,.6), inset 0 -3px 0 rgba(0,0,0,.15); } }
   .row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  .row .hidden { display: none; }
 
   .legend { display: grid; grid-template-columns: repeat(3, auto); gap: 4px 12px; font-size: 12.5px; color: var(--muted); justify-content: center; }
   .legend span { white-space: nowrap; text-align: left; }
   .tip { font-size: 12px; color: #fde047; opacity: .85; }
-  .hint { color: var(--muted); font-size: 13px; text-align: center; max-width: 500px; }
+  .hint { grid-area: hint; color: var(--muted); font-size: 13px; text-align: center; width: var(--bw); max-width: 100%; }
   kbd { font-family: inherit; font-size: 12px; background: rgba(255,255,255,.08); border: 1px solid var(--glass-border); border-bottom-width: 2px; border-radius: 6px; padding: 1px 6px; }
 
   .lbform { display: flex; gap: 8px; width: 100%; max-width: 340px; }
@@ -164,6 +194,146 @@
   .tile.locked { opacity: .45; cursor: not-allowed; }
   .tile .sw { width: 30px; height: 30px; border-radius: 50%; box-shadow: inset 0 -3px 0 rgba(0,0,0,.25), inset 0 3px 4px rgba(255,255,255,.25); }
   .tile .ic { font-size: 24px; line-height: 30px; height: 30px; }
+
+  /* ---------- obrazovka: vycentrovaný obsah, který při přetečení jde rolovat ---------- */
+  .overlay { justify-content: flex-start; }
+  .overlay::before, .overlay::after { content: ""; flex: 1 0 0; margin: -5px 0; }
+  .overlay.top-align::before { flex: 0 0 0; }
+
+  /* ---------- ovladač se šipkami ---------- */
+  .pads { grid-area: pads; display: flex; justify-content: center; align-items: center; gap: 20px; width: var(--bw); max-width: 100%; }
+  .pads.hidden, .pad.hidden { display: none; }
+  .pads.two { justify-content: space-between; }
+  .pad { --pk: 64px; --pc: rgba(255,255,255,.2); display: grid; grid-template-columns: repeat(3, var(--pk)); grid-template-rows: repeat(3, var(--pk)); gap: 3px; }
+  .pads.two .pad { --pk: min(58px, calc((100vw - var(--sal) - var(--sar) - 64px) / 6.3)); }
+  .pad button {
+    width: 100%; height: 100%; padding: 0; border-radius: 18px; animation: none;
+    font-size: calc(var(--pk) * .42); line-height: 1; color: var(--text);
+    background: rgba(255,255,255,.07); box-shadow: inset 0 0 0 2px var(--pc);
+    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+    transition: transform .06s, background .06s;
+  }
+  .pad button:hover { transform: none; filter: none; }
+  .pad button.on, .pad button:active { background: var(--pc); transform: scale(.9); }
+  .pad [data-d="u"] { grid-area: 1 / 2; } .pad [data-d="l"] { grid-area: 2 / 1; }
+  .pad [data-d="r"] { grid-area: 2 / 3; } .pad [data-d="d"] { grid-area: 3 / 2; }
+  .pad .lbl { grid-area: 2 / 2; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: var(--pc); text-align: center; line-height: 1.1; }
+
+  /* ---------- půlky obrazovky pro dva hráče ---------- */
+  #halves { position: fixed; inset: 0; display: flex; pointer-events: none; z-index: 15; opacity: 0; transition: opacity .6s; }
+  #halves.show, #halves.line { opacity: 1; }
+  #halves > div { flex: 1; display: flex; align-items: flex-end; justify-content: center; padding: 0 10px calc(var(--sab) + 18px); font-weight: 700; font-size: 18px; text-shadow: 0 2px 8px #000; transition: opacity .6s; }
+  #halves.line > div { opacity: 0; }
+  #halves .mid { position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: linear-gradient(transparent, rgba(255,255,255,.28) 20%, rgba(255,255,255,.28) 80%, transparent); }
+  #halves.line .mid { opacity: .5; }
+  #halves.show ~ .hint { opacity: 0; }
+
+  /* ---------- nastavení ---------- */
+  .opts { width: 100%; max-width: 420px; display: flex; flex-direction: column; gap: 8px; }
+  .opt {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer;
+    background: rgba(255,255,255,.05); border: 1px solid var(--glass-border); border-radius: 16px;
+    padding: 12px 16px; min-height: 60px; font-size: 17px; font-weight: 500; text-align: left;
+  }
+  .opt small { display: block; color: var(--muted); font-size: 13px; font-weight: 400; }
+  .opt.hidden { display: none; }
+  .switch { appearance: none; -webkit-appearance: none; margin: 0; flex-shrink: 0; cursor: pointer; position: relative;
+    width: 54px; height: 32px; border-radius: 999px; background: rgba(255,255,255,.16); transition: background .2s; }
+  .switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 26px; height: 26px; border-radius: 50%; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,.4); transition: transform .2s; }
+  .switch:checked { background: #22c55e; }
+  .switch:checked::after { transform: translateX(22px); }
+  .haptic { position: fixed; left: -100px; top: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+
+  /* ---------- slabší telefon: vypnout drahé efekty ---------- */
+  body.lowq .blob { display: none; }
+  body.lowq .score, body.lowq .icon-btn, body.lowq .pad button, body.lowq .overlay { -webkit-backdrop-filter: none; backdrop-filter: none; }
+  body.lowq .score, body.lowq .icon-btn { background: rgba(22,27,40,.94); }
+  body.lowq .overlay { background: rgba(11,15,26,.9); }
+  body.playing #play, body.playing h1 .logo, body.playing .lblist li.me { animation: none; }
+
+  /* ---------- telefon: menu, šatník a žebříček přes celou obrazovku, velké na palec ---------- */
+  @media (max-width: 700px), (max-height: 540px) {
+    .overlay {
+      position: fixed; inset: 0; border-radius: 0; background: rgba(11,15,26,.88); gap: 14px;
+      padding: calc(var(--sat) + 18px) calc(var(--sar) + 20px) calc(var(--sab) + 18px) calc(var(--sal) + 20px);
+    }
+    .overlay h2 { font-size: 30px; }
+    .overlay p { font-size: 17px; max-width: 440px; }
+    .overlay p.score2 { font-size: 15px; }
+    .overlay.over #msg { font-size: 20px; }
+    .hero { font-size: 52px; }
+    button { min-height: 52px; font-size: 19px; }
+    .row { width: 100%; max-width: 440px; gap: 10px; }
+    .row #play { flex: 1 0 100%; min-height: 62px; font-size: 23px; }
+    .row .secondary { flex: 1 1 0; min-width: 0; padding: 10px 4px; font-size: 16px; white-space: nowrap; }
+    .seg { width: 100%; max-width: 440px; }
+    .seg button { flex: 1; min-height: 48px; font-size: 17px; }
+    .legend { font-size: 15px; gap: 6px 14px; }
+    .tip { font-size: 14px; max-width: 440px; }
+    .lbform, .lblist, .wlabel, .opts { max-width: 440px; }
+    .lbform input { min-height: 52px; font-size: 17px; }
+    .lbform button { min-height: 52px; font-size: 17px; }
+    .lblist { gap: 8px; }
+    .lblist li { min-height: 54px; padding: 10px 14px; font-size: 18px; grid-template-columns: 40px 1fr auto; }
+    #lbBack, #wDone, #sDone { width: 100%; max-width: 440px; position: sticky; bottom: 0; z-index: 2; box-shadow: 0 8px 24px rgba(34,211,238,.35), 0 0 0 10px rgba(11,15,26,.88), 0 -14px 24px 6px rgba(11,15,26,.9); }
+    #lbBack { box-shadow: inset 0 0 0 1px var(--glass-border), 0 0 0 10px rgba(11,15,26,.88), 0 -14px 24px 6px rgba(11,15,26,.9); background: #232838; }
+    #preview { max-width: 440px; height: 128px; }
+    .wlabel { font-size: 13px; }
+    .grid { max-width: 440px; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px; }
+    .tile { min-height: 84px; justify-content: center; font-size: 13px; padding: 8px 2px; border-radius: 14px; }
+    .tile .sw { width: 38px; height: 38px; }
+    .tile .ic { font-size: 30px; line-height: 38px; height: 38px; }
+    #laugh { max-width: 380px; height: 140px; }
+  }
+  @media (max-width: 380px) {
+    h1 { font-size: 28px; }
+    .icon-btn { width: 42px; height: 42px; }
+    .score b { font-size: 24px; }
+  }
+
+  /* ---------- telefon na šířku: plocha uprostřed, ovládání po stranách ---------- */
+  @media (orientation: landscape) and (max-height: 540px) {
+    body {
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+      grid-template-rows: auto auto minmax(0, 1fr);
+      grid-template-areas: "top stage pr" "scores stage pr" "pl stage pr";
+      align-content: stretch; align-items: start; column-gap: 18px; row-gap: 10px;
+      padding: calc(var(--sat) + 8px) calc(var(--sar) + 12px) calc(var(--sab) + 8px) calc(var(--sal) + 12px);
+    }
+    .stage { width: auto; }
+    .top, .scores { width: 100%; max-width: 280px; justify-self: end; }
+    .top { flex-wrap: wrap; gap: 6px; }
+    h1 { font-size: 26px; width: 100%; }
+    .icon-btn { width: 44px; height: 44px; font-size: 17px; }
+    .scores { flex-direction: column; gap: 8px; }
+    .score { padding: 7px 12px; }
+    .score b { font-size: 24px; }
+    .hint { display: none; }
+    .pads { display: contents; }
+    .pad { --pk: min(62px, calc((100dvh - var(--sat) - var(--sab) - 40px) / 3.3), calc((100vw - var(--bw) - var(--sal) - var(--sar) - 64px) / 6.3)); align-self: center; }
+    .pads.two .pad { --pk: min(54px, calc((100dvh - var(--sat) - var(--sab) - 40px) / 3.6), calc((100vw - var(--bw) - var(--sal) - var(--sar) - 64px) / 6.3)); }
+    /* menu a konec hry ve dvou sloupcích, ať je „Hrát“ vidět bez rolování */
+    #overlay { flex-direction: row; align-items: center; justify-content: center; gap: 28px; }
+    #overlay::before, #overlay::after { display: none; }
+    #overlay .ovl-l, #overlay .ovl-r { display: flex; flex-direction: column; align-items: center; gap: 10px; flex: 1 1 0; min-width: 0; max-width: 400px; max-height: 100%; }
+    #overlay .ovl-l { justify-content: center; }
+    #overlay .tip { display: none; }
+    #overlay .hero { font-size: 44px; }
+    #overlay .row #play { min-height: 56px; font-size: 21px; }
+    #laugh { height: 112px; }
+    .overlay h2 { font-size: 26px; }
+    .opts { display: grid; grid-template-columns: 1fr 1fr; max-width: 820px; }
+    #sDone, #lbBack, #wDone { max-width: 320px; }
+    #pad1 { grid-area: pr; justify-self: start; }
+    #pad2 { grid-area: pr; justify-self: start; }
+    body.m2 { grid-template-areas: "top stage s2" "s1 stage pr" "pl stage pr"; }
+    body.m2 .scores { display: contents; }
+    body.m2 #b1 { grid-area: s1; width: 100%; max-width: 280px; justify-self: end; }
+    body.m2 #b2 { grid-area: s2; width: 100%; max-width: 280px; justify-self: start; }
+    body.m2 #pad1 { grid-area: pl; justify-self: end; align-self: end; }
+    body.m2 #pad2 { grid-area: pr; align-self: end; }
+    #halves > div { padding-bottom: calc(var(--sab) + 10px); }
+  }
 </style>
 </head>
 <body>
@@ -174,21 +344,26 @@
     <button class="icon-btn" id="pause" title="Pauza (mezerník)">⏸</button>
     <button class="icon-btn" id="music" title="Hudba (H)">🎵</button>
     <button class="icon-btn" id="mute" title="Zvuk (M)">🔊</button>
+    <button class="icon-btn" id="setTop" title="Nastavení">⚙️</button>
   </div>
   <div class="scores">
     <div class="score" id="b1"><div><small id="l1">Skóre</small><b id="v1">0</b></div><span class="chips" id="c1"></span></div>
     <div class="score" id="b2"><div><small id="l2">Nejvyšší</small><b id="v2">0</b></div><span class="chips" id="c2"></span></div>
   </div>
-  <div class="wrap">
+  <div class="stage" id="stage">
+  <div class="wrap" id="wrap">
     <div class="board" id="board"><canvas id="c"></canvas></div>
 
     <div class="overlay" id="overlay">
+      <div class="ovl-l">
       <div class="hero" id="hero">🐍</div>
       <canvas id="laugh" class="hidden"></canvas>
       <h2 id="title">Had</h2>
       <p id="msg">Sbírej ovoce a nenaraz do zdi ani do hada.</p>
       <p class="score2" id="score2"></p>
       <p class="unlock" id="unlock"></p>
+      </div>
+      <div class="ovl-r">
       <form class="lbform hidden" id="lbForm" autocomplete="off">
         <input id="lbName" maxlength="15" placeholder="Tvoje jméno do žebříčku" enterkeyhint="send" spellcheck="false">
         <button type="submit" id="lbSend">Zapsat</button>
@@ -201,6 +376,7 @@
         <button id="play">Hrát</button>
         <button id="wardrobeBtn" class="secondary">🎨 Šatník</button>
         <button id="lbBtn" class="secondary">🏆 TOP 10</button>
+        <button id="setBtn" class="secondary">⚙️ Nastavení</button>
       </div>
       <div class="legend">
         <span>🍎 +1</span><span>⭐ +5</span><span>🐭 +3 chyť ji!</span>
@@ -208,6 +384,7 @@
         <span>🧲 přitáhne jídlo</span><span>🌀 portál</span><span>💣 nejez!</span>
       </div>
       <div class="tip">Jez rychle za sebou → combo ×2 až ×5 · občas přijde ovocná horečka 🍉</div>
+      </div>
     </div>
 
     <div class="overlay top-align hidden" id="lbPanel">
@@ -230,7 +407,27 @@
       <div class="grid" id="accs"></div>
       <button id="wDone">Hotovo</button>
     </div>
+
+    <div class="overlay top-align hidden" id="settings">
+      <h2>⚙️ Nastavení</h2>
+      <div class="opts">
+        <label class="opt" id="optPadRow"><span>🎮 Šipky na obrazovce<small>Tlačítka pod hrou místo přejíždění prstem</small></span><input type="checkbox" class="switch" id="optPad"></label>
+        <label class="opt" id="optVibeRow"><span>📳 Vibrace<small>Zavibruje při prohře a výbuchu</small></span><input type="checkbox" class="switch" id="optVibe"></label>
+        <label class="opt"><span>🎵 Hudba</span><input type="checkbox" class="switch" id="optMusic"></label>
+        <label class="opt"><span>🔊 Zvuky a smích</span><input type="checkbox" class="switch" id="optSound"></label>
+        <label class="opt"><span>⚡ Úsporný režim<small>Méně efektů pro starší telefony (zapíná se i sám)</small></span><input type="checkbox" class="switch" id="optLow"></label>
+      </div>
+      <p id="installTip"></p>
+      <button id="sDone">Hotovo</button>
+    </div>
   </div>
+  </div>
+  <div class="pads hidden" id="pads">
+    <div class="pad" id="pad1" data-p="0"><button data-d="u" aria-label="Nahoru">▲</button><button data-d="l" aria-label="Doleva">◀</button><span class="lbl"></span><button data-d="r" aria-label="Doprava">▶</button><button data-d="d" aria-label="Dolů">▼</button></div>
+    <div class="pad hidden" id="pad2" data-p="1"><button data-d="u" aria-label="Nahoru">▲</button><button data-d="l" aria-label="Doleva">◀</button><span class="lbl"></span><button data-d="r" aria-label="Doprava">▶</button><button data-d="d" aria-label="Dolů">▼</button></div>
+  </div>
+  <div id="halves" aria-hidden="true"><div id="half1">👈 Hráč 1</div><div id="half2">Hráč 2 👉</div><span class="mid"></span></div>
+  <label class="haptic" aria-hidden="true"><input type="checkbox" switch id="hapticSw" tabindex="-1"></label>
   <div class="hint" id="hint"></div>
   <canvas id="fx"></canvas>
 
@@ -414,6 +611,14 @@
   let xp = parseInt(store.get('had-xp', 0)) || 0;
   let mode = store.get('had-mode', '1') === '2' ? 2 : 1;
   let muted = store.get('had-mute', '0') === '1';
+  // kvalita grafiky: 2 = plná, 1 = střední (nižší rozlišení), 0 = úsporná (bez drahých efektů)
+  let lowPref = store.get('had-low', '0') === '1';
+  let quality = lowPref ? 0 : 2;
+  const DPR = () => Math.min(window.devicePixelRatio || 1, quality >= 2 ? 2 : quality === 1 ? 1.5 : 1.25);
+  const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const touchUI = matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
+  let vibeOn = store.get('had-vibe', '1') === '1';
+  let padOn = store.get('had-pad', '0') === '1';
   let musicOn = store.get('had-music', '1') === '1';
   const sel = [0, 1].map(i => ({ skin: store.get('had-skin-' + i, i ? 'amethyst' : 'classic'), acc: store.get('had-acc-' + i, 'none') }));
   const owned = it => !it.cost || xp >= it.cost;
@@ -436,7 +641,7 @@
         const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
       } catch (e) { actx = null; }
     }
-    if (actx && actx.state === 'suspended') actx.resume();
+    if (actx && actx.state !== 'running' && actx.state !== 'closed') { try { actx.resume().catch(() => {}); } catch (e) {} }
     return actx;
   }
   function osc(f1, f2, dur, type, vol, t0, dest) {
@@ -511,7 +716,47 @@
     milestone() { [0, 4, 7, 12].forEach((s, i) => tone(mf(67 + s), mf(67 + s), 0.16, 'triangle', 0.11, i * 0.09)); },
     click() { tone(800, 1000, 0.05, 'sine', 0.08); },
   };
-  const vibrate = p => { try { navigator.vibrate && navigator.vibrate(p); } catch (e) {} };
+  // Android: navigator.vibrate. iPhone vibrační API nemá – iOS 18+ aspoň jemně ťukne přes přepínač <input switch>.
+  const canVibrate = typeof navigator.vibrate === 'function';
+  const hapticSw = document.getElementById('hapticSw');
+  const iosHaptic = !canVibrate && isIOS && hapticSw && 'switch' in hapticSw;
+  const vibrate = p => {
+    if (!vibeOn) return;
+    try {
+      if (canVibrate) navigator.vibrate(p);
+      else if (iosHaptic) hapticSw.parentElement.click();
+    } catch (e) {}
+  };
+
+  // Safari (iPhone) pustí zvuk až po klepnutí: při prvním dotyku zvuk "odemkneme"
+  // a přepneme na režim přehrávání, aby hrál i při ztlumeném zvonění.
+  let audioUnlocked = false, keepAlive = null;
+  function silentWav() {
+    const n = 4000, b = new ArrayBuffer(44 + n), v = new DataView(b);
+    const w = (o, t) => { for (let i = 0; i < t.length; i++) v.setUint8(o + i, t.charCodeAt(i)); };
+    w(0, 'RIFF'); v.setUint32(4, 36 + n, true); w(8, 'WAVE'); w(12, 'fmt '); v.setUint32(16, 16, true);
+    v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, 8000, true); v.setUint32(28, 8000, true);
+    v.setUint16(32, 1, true); v.setUint16(34, 8, true); w(36, 'data'); v.setUint32(40, n, true);
+    for (let i = 0; i < n; i++) v.setUint8(44 + i, 128);
+    return URL.createObjectURL(new Blob([b], { type: 'audio/wav' }));
+  }
+  function unlockAudio() {
+    try { if (navigator.audioSession && navigator.audioSession.type !== 'playback') navigator.audioSession.type = 'playback'; } catch (e) {}
+    const a = audio();
+    if (!a) return;
+    if (!audioUnlocked) {
+      try { const s = a.createBufferSource(); s.buffer = a.createBuffer(1, 1, 22050); s.connect(a.destination); s.start(0); } catch (e) {}
+      audioUnlocked = true;
+    }
+    // starší iOS bez audioSession: tichá smyčka v <audio> přepne telefon do režimu "média"
+    if (isIOS && !navigator.audioSession && !muted) {
+      try {
+        if (!keepAlive) { keepAlive = new Audio(silentWav()); keepAlive.loop = true; keepAlive.setAttribute('playsinline', ''); }
+        if (keepAlive.paused) keepAlive.play().catch(() => {});
+      } catch (e) {}
+    }
+  }
+  ['pointerdown', 'touchend', 'keydown', 'click'].forEach(ev => window.addEventListener(ev, unlockAudio, { capture: true, passive: true }));
 
   // jednoduchá procedurální hudba
   const PROG = [[57, 60, 64], [53, 57, 60], [48, 52, 55], [55, 59, 62]];
@@ -915,6 +1160,8 @@
       p.life -= p.decay * dt;
     }
     particles = particles.filter(p => p.life > 0);
+    const pmax = quality > 0 ? 260 : 110;
+    if (particles.length > pmax) particles.splice(0, particles.length - pmax);
     for (const t of texts) { t.y -= cell() * 1.4 * dt; t.life -= dt; }
     texts = texts.filter(t => t.life > 0);
     for (const b of banners) b.life -= dt;
@@ -923,7 +1170,7 @@
     flashT = Math.max(0, flashT - dt);
   }
   function updateConfetti(dt) {
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = DPR();
     for (const p of confetti) {
       p.x += p.vx * dt * dpr; p.y += p.vy * dt * dpr; p.rot += p.vr * dt;
       p.vx *= 0.99; p.x += Math.sin(p.y / 40) * 0.8;
@@ -1046,8 +1293,12 @@
 
       // stín na zemi + záře
       g.save();
-      g.shadowColor = 'rgba(0,0,0,0.55)'; g.shadowBlur = c * 0.35; g.shadowOffsetX = c * 0.05; g.shadowOffsetY = c * 0.17;
-      g.fillStyle = headCol; g.fill(path);
+      if (quality > 0) {
+        g.shadowColor = 'rgba(0,0,0,0.55)'; g.shadowBlur = c * 0.35; g.shadowOffsetX = c * 0.05; g.shadowOffsetY = c * 0.17;
+        g.fillStyle = headCol; g.fill(path);
+      } else {   // úsporně: stín bez rozmazání
+        g.translate(c * 0.05, c * 0.15); g.fillStyle = 'rgba(0,0,0,0.32)'; g.fill(path);
+      }
       g.restore();
       if (o.glowColor || skin.neon) {
         g.save();
@@ -1089,7 +1340,7 @@
       drawPattern(g, c, sm, W, skin, now, nn);
 
       // šupiny (drží se těla)
-      {
+      if (quality > 0) {
         const STEP = c / 5;
         const dark = new Path2D(), light = new Path2D();
         let carry = STEP * 0.5, row = 0;
@@ -1771,7 +2022,7 @@
     }
 
     fctx.clearRect(0, 0, fx.width, fx.height);
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = DPR();
     for (const p of confetti) {
       fctx.save(); fctx.translate(p.x, p.y); fctx.rotate(p.rot);
       fctx.fillStyle = p.color;
@@ -1800,7 +2051,7 @@
   function showLaugh(skin, acc) {
     laughOn = true; laughSkin = skin; laughAcc = acc; laughStart = performance.now();
     heroEl.classList.add('hidden'); lc.classList.remove('hidden'); overlay.classList.add('over');
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = DPR();
     lc.width = Math.round(lc.clientWidth * dpr); lc.height = Math.round(lc.clientHeight * dpr);
   }
   function hideLaugh() {
@@ -1870,6 +2121,7 @@
     wardrobeOpen = false;
     wardrobe.classList.add('hidden');
     overlay.classList.remove('hidden');
+    updatePads();
     updateHud(true);
   }
   $('skins').addEventListener('click', e => {
@@ -1982,10 +2234,15 @@
   $('lbBack').addEventListener('click', closeLb);
 
   // ---------- smyčka ----------
-  let last = performance.now();
+  let last = performance.now(), bodyPlaying = false;
   function frame(now) {
-    const dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
+    const rawDt = Math.max(0, (now - last) / 1000);
+    const dt = Math.min(0.05, rawDt);
     last = now;
+    watchPerf(rawDt);
+    updateHalves();
+    const playing = phase === 'play' && !paused;
+    if (playing !== bodyPlaying) { bodyPlaying = playing; document.body.classList.toggle('playing', playing); }
     const fxDt = now < slowmoUntil ? dt * 0.3 : dt;
     if (!paused) {
       if (phase === 'countdown') {
@@ -2063,13 +2320,19 @@
       setText('c1', chips(p0)); setText('c2', '🏆');
       $('b1').style.setProperty('--accent', acc0); $('b2').style.setProperty('--accent', '#fde047');
     } else {
-      setText('l1', 'Hráč 1 · šipky'); setText('v1', String(p0 ? p0.score : 0), true);
-      setText('l2', 'Hráč 2 · WASD'); setText('v2', String(p1 ? p1.score : 0), true);
+      setText('l1', touchUI ? 'Hráč 1 · vlevo' : 'Hráč 1 · šipky'); setText('v1', String(p0 ? p0.score : 0), true);
+      setText('l2', touchUI ? 'Hráč 2 · vpravo' : 'Hráč 2 · WASD'); setText('v2', String(p1 ? p1.score : 0), true);
       setText('c1', chips(p0) + '🏆' + wins[0]); setText('c2', chips(p1) + '🏆' + wins[1]);
       $('b1').style.setProperty('--accent', acc0); $('b2').style.setProperty('--accent', acc1);
     }
   }
   function setHint() {
+    if (touchUI) {
+      $('hint').innerHTML = mode === 1
+        ? (padOn ? 'Řiď šipkami pod hrou nebo přejetím prstem' : 'Přejeď prstem kamkoli po obrazovce · ⚙️ zapne šipky na obrazovce')
+        : (padOn ? 'Každý hráč má své šipky' : 'Hráč 1 přejíždí po levé půlce, hráč 2 po pravé');
+      return;
+    }
     $('hint').innerHTML = mode === 1
       ? '<kbd>←↑↓→</kbd> nebo <kbd>WASD</kbd> · na mobilu přejeď prstem · <kbd>mezerník</kbd> pauza · <kbd>M</kbd> zvuk · <kbd>H</kbd> hudba'
       : 'Hráč 1 <kbd>←↑↓→</kbd> · Hráč 2 <kbd>W A S D</kbd> · na mobilu: pravá půlka hráč 1, levá hráč 2';
@@ -2082,7 +2345,9 @@
       players = []; foods = []; portals = [];
       heroEl.textContent = m === 1 ? '🐍' : '🐍⚔️🐍';
       titleEl.textContent = m === 1 ? 'Had' : 'Hadí souboj';
-      msgEl.textContent = m === 1 ? 'Sbírej ovoce a nenaraz do zdi ani do hada.' : 'Kdo první narazí, prohrál. Hráč 1 jede šipkami, hráč 2 WASD.';
+      msgEl.textContent = m === 1 ? 'Sbírej ovoce a nenaraz do zdi ani do hada.'
+        : touchUI ? (padOn ? 'Kdo první narazí, prohrál. Každý má své šipky – hráč 1 vlevo, hráč 2 vpravo.' : 'Kdo první narazí, prohrál. Hráč 1 přejíždí prstem po levé půlce obrazovky, hráč 2 po pravé.')
+        : 'Kdo první narazí, prohrál. Hráč 1 jede šipkami, hráč 2 WASD.';
       unlockEl.textContent = '';
       $('score2').textContent = '';
       hideLaugh();
@@ -2090,17 +2355,23 @@
       playBtn.textContent = 'Hrát';
     }
     setHint();
+    updatePads();
     updateHud(true);
+    if (lastBW) resize();
   }
 
-  function setMuted(v) { muted = v; store.set('had-mute', v ? '1' : '0'); $('mute').textContent = v ? '🔇' : '🔊'; }
-  function setMusic(v) { musicOn = v; store.set('had-music', v ? '1' : '0'); $('music').classList.toggle('off', !v); }
+  function setMuted(v) {
+    muted = v; store.set('had-mute', v ? '1' : '0'); $('mute').textContent = v ? '🔇' : '🔊';
+    if (v && keepAlive) keepAlive.pause();
+    if (settingsOpen) $('optSound').checked = !v;
+  }
+  function setMusic(v) { musicOn = v; store.set('had-music', v ? '1' : '0'); $('music').classList.toggle('off', !v); if (settingsOpen) $('optMusic').checked = v; }
   function togglePause() {
     if (phase === 'play' || phase === 'countdown') paused = !paused;
     $('pause').textContent = paused ? '▶️' : '⏸';
   }
   function tryStart() {
-    if ((phase === 'menu' || phase === 'over') && canRestart && !wardrobeOpen && !lbOpen) { newGame(); $('pause').textContent = '⏸'; }
+    if ((phase === 'menu' || phase === 'over') && canRestart && !wardrobeOpen && !lbOpen && !settingsOpen) { newGame(); $('pause').textContent = '⏸'; }
   }
 
   // ---------- ovládání ----------
@@ -2111,35 +2382,153 @@
     if (ARROWS[e.code]) { e.preventDefault(); if (!paused) setDir(0, ...ARROWS[e.code]); }
     else if (WASD[e.code]) { if (!paused) setDir(mode === 2 ? 1 : 0, ...WASD[e.code]); }
     else if (e.code === 'Space') { e.preventDefault(); togglePause(); }
-    else if (e.code === 'Enter') { if (phase === 'menu' || phase === 'over') { e.preventDefault(); if (lbOpen) closeLb(); else if (wardrobeOpen) closeWardrobe(); else tryStart(); } }
-    else if (e.code === 'Escape') { if (lbOpen) closeLb(); else if (wardrobeOpen) closeWardrobe(); }
+    else if (e.code === 'Enter') { if (phase === 'menu' || phase === 'over') { e.preventDefault(); if (settingsOpen) closeSettings(); else if (lbOpen) closeLb(); else if (wardrobeOpen) closeWardrobe(); else tryStart(); } }
+    else if (e.code === 'Escape') { if (settingsOpen) closeSettings(); else if (lbOpen) closeLb(); else if (wardrobeOpen) closeWardrobe(); }
     else if (e.code === 'KeyM') setMuted(!muted);
     else if (e.code === 'KeyH') setMusic(!musicOn);
   });
 
-  const touches = new Map();
-  window.addEventListener('touchstart', e => {
-    for (const t of e.changedTouches) {
-      const pi = mode === 2 && t.clientX < window.innerWidth / 2 ? 1 : 0;
-      touches.set(t.identifier, { x: t.clientX, y: t.clientY, pi });
-    }
+  // ---------- dotyk: přejetí prstem ----------
+  // Reaguje už po pár pixelech, po každé zatáčce se "přikotví" znovu (rychlé tahy do L),
+  // a když prst jen krátce cvrkne, rozhodne se podle směru při puštění.
+  const swipes = new Map();
+  const inUI = el => !!(el && el.closest && el.closest('.overlay, button, input, label, .pad, .top'));
+  const swipeTh = () => Math.max(11, Math.min(20, Math.min(window.innerWidth, window.innerHeight) * 0.034));
+  const swipePlayer = x => mode === 2 ? (x < window.innerWidth / 2 ? 0 : 1) : 0;
+  const steering = () => phase === 'play' || phase === 'countdown';
+  function swipeTo(s, d) {
+    if (s.last && s.last[0] === d[0] && s.last[1] === d[1]) return;
+    s.last = d; s.turned = true;
+    if (!paused) setDir(s.pi, d[0], d[1]);
+  }
+  function swipeMove(s, x, y) {
+    const dx = x - s.x, dy = y - s.y, ax = Math.abs(dx), ay = Math.abs(dy), m = Math.max(ax, ay), th = swipeTh();
+    if (m < th) return;
+    if (m < th * 2.5 && m < Math.min(ax, ay) * 1.25) return;   // úhlopříčka – počkej, kam se prst vydá
+    swipeTo(s, ax > ay ? [dx > 0 ? 1 : -1, 0] : [0, dy > 0 ? 1 : -1]);
+    s.x = x; s.y = y;
+  }
+  window.addEventListener('pointerdown', e => {
+    if (e.pointerType === 'mouse' || inUI(e.target)) return;
+    swipes.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, t: e.timeStamp, pi: swipePlayer(e.clientX), last: null, turned: false });
   }, { passive: true });
-  window.addEventListener('touchmove', e => {
-    for (const t of e.changedTouches) {
-      const s = touches.get(t.identifier);
-      if (!s || paused) continue;
-      const dx = t.clientX - s.x, dy = t.clientY - s.y;
-      if (Math.max(Math.abs(dx), Math.abs(dy)) < 24) continue;
-      if (Math.abs(dx) > Math.abs(dy)) setDir(s.pi, dx > 0 ? 1 : -1, 0);
-      else setDir(s.pi, 0, dy > 0 ? 1 : -1);
-      s.x = t.clientX; s.y = t.clientY;
-    }
+  window.addEventListener('pointermove', e => {
+    const s = swipes.get(e.pointerId);
+    if (!s || !steering()) return;
+    const list = e.getCoalescedEvents ? e.getCoalescedEvents() : null;
+    if (list && list.length) for (const ce of list) swipeMove(s, ce.clientX, ce.clientY);
+    else swipeMove(s, e.clientX, e.clientY);
   }, { passive: true });
-  const endTouch = e => { for (const t of e.changedTouches) touches.delete(t.identifier); };
-  window.addEventListener('touchend', endTouch);
-  window.addEventListener('touchcancel', endTouch);
+  window.addEventListener('pointerup', e => {
+    const s = swipes.get(e.pointerId);
+    swipes.delete(e.pointerId);
+    if (!s || s.turned || !steering()) return;
+    const dx = e.clientX - s.sx, dy = e.clientY - s.sy;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) >= 7 && e.timeStamp - s.t < 350)
+      swipeTo(s, Math.abs(dx) > Math.abs(dy) ? [dx > 0 ? 1 : -1, 0] : [0, dy > 0 ? 1 : -1]);
+  });
+  window.addEventListener('pointercancel', e => swipes.delete(e.pointerId));
+  // žádné posouvání stránky, zoom gestem ani dvojitým klepnutím (mimo rolovací panely)
+  document.addEventListener('touchmove', e => { if (!(e.target.closest && e.target.closest('.overlay'))) e.preventDefault(); }, { passive: false });
+  ['gesturestart', 'gesturechange', 'dblclick'].forEach(ev => document.addEventListener(ev, e => e.preventDefault(), { passive: false }));
+  document.addEventListener('contextmenu', e => { if (!(e.target.closest && e.target.closest('input'))) e.preventDefault(); });
+
+  // ---------- šipky na obrazovce ----------
+  const PAD_DIR = { u: [0, -1], d: [0, 1], l: [-1, 0], r: [1, 0] };
+  document.querySelectorAll('.pad').forEach(pad => {
+    pad.addEventListener('pointerdown', e => {
+      const b = e.target.closest('button'); if (!b) return;
+      e.preventDefault();
+      const d = PAD_DIR[b.dataset.d], pi = +pad.dataset.p;
+      if (!paused) setDir(pi, d[0], d[1]);
+      b.classList.add('on'); clearTimeout(b._t); b._t = setTimeout(() => b.classList.remove('on'), 110);
+      if (steering()) vibrate(8);
+    });
+  });
+  function updatePads() {
+    const pads = $('pads');
+    pads.classList.toggle('hidden', !padOn);
+    pads.classList.toggle('two', mode === 2);
+    $('pad2').classList.toggle('hidden', mode !== 2);
+    document.body.classList.toggle('m2', mode === 2);
+    for (let i = 0; i < 2; i++) {
+      const pad = $('pad' + (i + 1)), acc = SKIN[sel[i].skin].accent;
+      pad.style.setProperty('--pc', mode === 2 ? acc + '88' : 'rgba(255,255,255,.2)');
+      pad.querySelector('.lbl').textContent = mode === 2 ? 'Hráč ' + (i + 1) : '';
+      const h = $('half' + (i + 1));
+      h.style.color = acc; h.style.background = `linear-gradient(to top, ${acc}40, transparent 55%)`;
+    }
+  }
+  let halvesCls = '';
+  function updateHalves() {
+    const want = mode === 2 && touchUI && !padOn && steering() ? (phase === 'countdown' ? 'show' : 'line') : '';
+    if (want !== halvesCls) { $('halves').className = want; halvesCls = want; }
+  }
+
+  // ---------- nastavení ----------
+  let settingsOpen = false, installEvt = null;
+  const settingsEl = $('settings');
+  function syncSettings() {
+    $('optPad').checked = padOn; $('optVibe').checked = vibeOn;
+    $('optMusic').checked = musicOn; $('optSound').checked = !muted; $('optLow').checked = lowPref;
+    $('optVibeRow').classList.toggle('hidden', !canVibrate && !iosHaptic && !touchUI);
+    if (!canVibrate) $('optVibeRow').querySelector('small').textContent = iosHaptic ? 'Na iPhonu jen jemné ťuknutí (iOS 18 a novější)' : 'Tenhle prohlížeč vibrace nepodporuje';
+    const standalone = matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches || navigator.standalone;
+    const tip = $('installTip');
+    if (standalone) tip.innerHTML = '📲 Hra běží jako aplikace – funguje i bez internetu.';
+    else if (isIOS) tip.innerHTML = '📲 <b>Jako aplikace:</b> v Safari klepni na <b>Sdílet</b> ⬆️ → <b>Přidat na plochu</b>.';
+    else if (installEvt) tip.innerHTML = '<button id="installBtn" class="secondary">📲 Přidat hru na plochu</button>';
+    else tip.innerHTML = touchUI ? '📲 <b>Jako aplikace:</b> v menu prohlížeče ⋮ zvol <b>Přidat na plochu</b> / <b>Nainstalovat</b>.' : '';
+    const ib = $('installBtn');
+    if (ib) ib.addEventListener('click', async () => { installEvt.prompt(); try { await installEvt.userChoice; } catch (e) {} installEvt = null; syncSettings(); });
+  }
+  function openSettings() {
+    if (phase === 'play' || phase === 'countdown') { if (!paused) togglePause(); }
+    if (wardrobeOpen) closeWardrobe();
+    if (lbOpen) closeLb();
+    settingsOpen = true;
+    settingsEl._back = overlay.classList.contains('hidden') ? null : overlay;
+    overlay.classList.add('hidden');
+    settingsEl.classList.remove('hidden'); settingsEl.scrollTop = 0;
+    syncSettings();
+  }
+  function closeSettings() {
+    settingsOpen = false;
+    settingsEl.classList.add('hidden');
+    if (phase === 'menu' || phase === 'over') overlay.classList.remove('hidden');
+    resize();
+  }
+  $('setBtn').addEventListener('click', openSettings);
+  $('setTop').addEventListener('click', () => settingsOpen ? closeSettings() : openSettings());
+  $('sDone').addEventListener('click', closeSettings);
+  $('optPad').addEventListener('change', e => { padOn = e.target.checked; store.set('had-pad', padOn ? '1' : '0'); updatePads(); setHint(); resize(); });
+  $('optVibe').addEventListener('change', e => { vibeOn = e.target.checked; store.set('had-vibe', vibeOn ? '1' : '0'); if (vibeOn) vibrate(40); });
+  $('optMusic').addEventListener('change', e => { audio(); setMusic(e.target.checked); });
+  $('optSound').addEventListener('change', e => { setMuted(!e.target.checked); if (!muted) { audio(); sfx.click(); } });
+  $('optLow').addEventListener('change', e => { lowPref = e.target.checked; store.set('had-low', lowPref ? '1' : '0'); setQuality(lowPref ? 0 : 2); });
+  window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; if (settingsOpen) syncSettings(); });
+
+  // ---------- plynulost: když se telefon nestíhá, sníží se kvalita ----------
+  function setQuality(q) {
+    if (q === quality) return;
+    quality = q;
+    document.body.classList.toggle('lowq', q === 0);
+    resize();
+  }
+  let perfT = 0, perfN = 0, perfBad = 0;
+  function watchPerf(rawDt) {
+    if (phase !== 'play' || paused || document.hidden || rawDt > 0.25) return;
+    perfT += rawDt; perfN++;
+    if (perfN < 90) return;
+    const avg = perfT / perfN;
+    perfT = perfN = 0;
+    if (avg > 1 / 42 && quality > 0) { if (++perfBad >= 2) { perfBad = 0; setQuality(quality - 1); } }
+    else perfBad = 0;
+  }
 
   document.addEventListener('visibilitychange', () => {
+    if (actx) { try { (document.hidden ? actx.suspend() : actx.resume()).catch(() => {}); } catch (e) {} }
+    if (keepAlive) { if (document.hidden) keepAlive.pause(); else if (!muted) keepAlive.play().catch(() => {}); }
     if (document.hidden && (phase === 'play' || phase === 'countdown') && !paused) togglePause();
   });
 
@@ -2150,25 +2539,54 @@
   $('pause').addEventListener('click', togglePause);
 
   function resizePreview() {
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = DPR();
     pv.width = Math.round(pv.clientWidth * dpr);
     pv.height = Math.round(pv.clientHeight * dpr);
   }
+  const root = document.documentElement, stageEl = $('stage');
+  const landMQ = matchMedia('(orientation: landscape) and (max-height: 540px)');
+  let lastBW = 0, lastPx = 0;
+  function layout() {
+    const vw = window.innerWidth;
+    let size;
+    if (landMQ.matches) size = Math.min(stageEl.clientHeight, vw * 0.6, vw - 360);
+    else {
+      // změřit volné místo, pak řádek s plochou zmenšit přesně na ni => vše se vycentruje jako celek
+      root.style.setProperty('--stage-row', '1fr');
+      size = Math.min(stageEl.clientWidth, stageEl.clientHeight, 560);
+    }
+    size = Math.max(140, Math.floor(size / 2) * 2);
+    if (!landMQ.matches) root.style.setProperty('--stage-row', size + 'px');
+    if (size !== lastBW) { root.style.setProperty('--bw', size + 'px'); lastBW = size; }
+  }
   function resize() {
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = canvas.height = Math.round(canvas.clientWidth * dpr);
+    layout();
+    const dpr = DPR();
+    const px = Math.round((lastBW - 6) * dpr);
+    if (px !== lastPx || canvas.width !== px) { canvas.width = canvas.height = px; lastPx = px; renderBackground(); }
     fx.width = Math.round(window.innerWidth * dpr);
     fx.height = Math.round(window.innerHeight * dpr);
-    renderBackground();
     if (wardrobeOpen) resizePreview();
+    if (laughOn) { lc.width = Math.round(lc.clientWidth * dpr); lc.height = Math.round(lc.clientHeight * dpr); }
   }
-  window.addEventListener('resize', resize);
+  let resizeQueued = false;
+  const queueResize = () => { if (resizeQueued) return; resizeQueued = true; requestAnimationFrame(() => { resizeQueued = false; resize(); }); };
+  window.addEventListener('resize', queueResize);
+  window.addEventListener('orientationchange', () => setTimeout(resize, 250));
+  if (window.visualViewport) visualViewport.addEventListener('resize', queueResize);
 
+  if (quality === 0) document.body.classList.add('lowq');
+  if (!lbReady) $('lbBtn').classList.add('hidden');
   resize();
   setMuted(muted);
   setMusic(musicOn);
   setMode(mode);
   requestAnimationFrame(frame);
+
+  // offline + instalace na plochu
+  if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+    window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+  }
 })();
 </script>
 </body>

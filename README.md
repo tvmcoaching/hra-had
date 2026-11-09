@@ -13,3 +13,9 @@ Stačí otevřít `index.html` v prohlížeči.
 1. Vytvoř bezplatný projekt na [supabase.com](https://supabase.com).
 2. V *SQL Editoru* spusť soubor `supabase/zebricek.sql` (tabulka + zabezpečení: jen číst a přidávat).
 3. Do `index.html` doplň `SUPABASE_URL` a **veřejný** klíč (*Publishable key*). Tajný klíč (*Secret key*) do hry nikdy nepatří.
+
+## Mobil a aplikace
+- Ovládání přejetím prstu kdekoli na obrazovce, volitelně šipky na obrazovce (⚙️ Nastavení).
+- Hra pro dva na jednom telefonu: hráč 1 levá půlka, hráč 2 pravá.
+- Přidej na plochu (iPhone: Sdílet → Přidat na plochu) – spustí se přes celou obrazovku a funguje i bez internetu.
+- Při změně hry zvyš `VERSION` v `sw.js`, ať si telefony stáhnou novou verzi.
