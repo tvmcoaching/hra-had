@@ -274,13 +274,82 @@
   const pick = a => a[Math.floor(Math.random() * a.length)];
 
   const TAUNTS = {
-    wall: ['Ta zeď tam byla celou dobu. Celou. Dobu.', 'Zeď 1 : Ty 0', 'GPS ti asi došla baterka.', 'Zeď si tě zapíše do deníčku jako nejlepší den svého života.'],
-    self: ['Ty ses fakt snědl. Sám. Nikdo tě nenutil.', 'Největší nepřítel hada? Ty.', 'Gratuluju, jsi první had s autoimunitní chorobou.', 'Kanibalismus level: úplně zbytečnej.'],
-    fast: ['To byl rekord. Bohužel v rychlosti umírání.', 'Ani jsem nestihl dojíst popcorn.', 'Hraješ to poprvý, nebo jsi takhle normálně?', 'Moje babička hraje se zavřenýma očima a vydrží dýl.'],
-    low: ['Had umřel hlady. Pod tvým vedením.', 'Tohle skóre bych ani mámě neukazoval.', 'Klávesnice podala stížnost.', 'Ovoce se ti vysmívá. A to nemá ani pusu.'],
-    high: ['Dobrý. Fakt dobrý. Škoda, že ses na konci stejně zabil. 😏', 'Skoro legenda. Klíčový slovo: skoro.', 'Celou dobu jsi byl hrdina… a pak tohle.'],
-    bomb: ['Byla tam napsaná BOMBA. Velkým písmem.', 'Boom. Přesně jako tvoje kariéra v této hře.', 'Kdo by čekal, že bomba vybuchne? No… všichni.', 'Sapér z tebe nebude.', 'Gratuluju, máš vlastní ohňostroj.'],
-    record: ['Nový rekord! Ale pořád umřel, takže se moc nenaparuj.'],
+    wall: [
+      'Ta zeď tam stála celou dobu. Nehýbala se. Fakt ne.',
+      'Zeď 1 : Ty 0. A zeď ani nehrála.',
+      'Zeď se ptá, jestli jsi v pohodě. Ona teda jo.',
+      'Navigace: „Za sto metrů zeď.“ Ty: „Jo, jasně.“',
+      'Hledal jsi únikovej východ? Tohle to nebylo.',
+      'Zeď si tě vyfotila na Insta. #dalšíoběť',
+      'Plán byl dobrej. Teda… byl tam vůbec nějakej plán?',
+      'GPS ti asi došla baterka.',
+    ],
+    self: [
+      'Ty ses fakt snědl. Sám. Nikdo tě nenutil.',
+      'Největší nepřítel hada? Zrcadlo.',
+      'Měl jsi hlad, chápu. Ale tohle byl ocas.',
+      'Tvůj ocas tě viděl přicházet. Ty jeho ne.',
+      'Gratuluju, právě jsi vynalezl hadí špagety.',
+      'Jíst se má ovoce. Ne vlastní zadek.',
+      'Zamotal ses líp než sluchátka v kapse.',
+      'Kanibalismus level: úplně zbytečnej.',
+    ],
+    bomb: [
+      'Byla tam napsaná BOMBA. Velkým písmem.',
+      'Kdo by čekal, že bomba vybuchne? No… všichni.',
+      'Sapér z tebe nebude.',
+      'Gratuluju, máš vlastní ohňostroj.',
+      'Tohle nebyla švestka. Ani trochu.',
+      'Hasiči jsou na cestě. Had už ne.',
+      'Doutnák syčel. Ty jsi slyšel „ochutnej mě“.',
+      'Boom. Přesně jako tvoje kariéra v týhle hře.',
+    ],
+    fast: [
+      'To byl rekord. V rychlosti umírání.',
+      'Ani jsem nestihl otevřít popcorn.',
+      'Hraješ to poprvý, nebo to máš takhle normálně?',
+      'Moje babička hraje se zavřenýma očima a vydrží dýl. A to u toho spí.',
+      'Návod se čte dýl, než trvala tvoje hra.',
+      'Mrknul jsem a bylo po tobě.',
+      'Had ani nestihl říct ahoj.',
+      'Speedrun smrti: nový světový rekord.',
+    ],
+    low: [
+      'Had umřel hlady. Pod tvým vedením.',
+      'Tohle skóre bych ani mámě neukazoval.',
+      'Klávesnice podala stížnost.',
+      'Ovoce se ti směje. A to ani nemá pusu.',
+      'Jablka si dneska oddychla.',
+      'Gratuluju, ovoce přežilo. Ty ne.',
+      'Skóre jak teplota v lednici.',
+    ],
+    high: [
+      'Dobrý. Fakt dobrý. Škoda toho konce. 😏',
+      'Skoro legenda. Klíčový slovo: skoro.',
+      'Celou dobu hrdina… a pak tohle.',
+      'Respekt. Teda až do tý poslední vteřiny.',
+      'Byl jsi tak blízko slávě. Pak ses rozhodl umřít.',
+      'Tolik ovoce. Tolik snahy. A stejně zeď.',
+    ],
+    record: [
+      'Nový rekord! Ale pořád jsi umřel, tak se moc nenaparuj.',
+      'Rekord! Rychle to vyfoť, příště to nedáš.',
+      'Nejlepší výkon tvýho života. Smutný, ale pravdivý.',
+      'Nový rekord! Had je na tebe hrdej. Teda byl.',
+    ],
+    winner: ['🏆 Král hadů', '👑 Hadí šampion', '🐍 Pán ovoce', '🏆 Nejlepší had v okrese'],
+    loser: [
+      'Druhej je první z poraženejch.',
+      'Prohrál jsi s kamarádem. Bude ti to připomínat do Vánoc.',
+      'Stříbro je jen zlato, co to nedalo.',
+      'Příště to vyjde. Možná. Asi ne.',
+      'Aspoň jsi tomu druhýmu udělal radost.',
+    ],
+    draw: [
+      'Oba jste prohráli. To se jen tak nevidí.',
+      'Remíza. Nikdo nevyhrál, oba se stydíte.',
+      'Dva hadi, jeden mozek. A ten nebyl ani u jednoho.',
+    ],
   };
   const MSG1 = {
     wall: ['Zeď byla rychlejší. 🧱', 'Bum do zdi! Zeď je v pohodě.', 'Zeď: 1, had: 0.', 'Tahle zeď tu byla už předtím…'],
@@ -681,6 +750,19 @@
     }
   }
 
+  let typeTimer = null;
+  function typeOut(el) {
+    const full = el.textContent, chars = [...full];
+    clearInterval(typeTimer);
+    let k = 0;
+    el.textContent = '';
+    typeTimer = setInterval(() => {
+      k++;
+      el.textContent = chars.slice(0, k).join('');
+      if (k % 3 === 0 && chars[k - 1] !== ' ') tone(900 + Math.random() * 300, 900, 0.02, 'square', 0.015);
+      if (k >= chars.length) clearInterval(typeTimer);
+    }, 32);
+  }
   let lastTaunt = store.get('had-last-taunt', '');
   function pickTaunt(pools) {   // nikdy stejná hláška dvakrát po sobě
     for (const pool of pools) {
@@ -726,13 +808,13 @@
         const win = alive[0], lose = players.find(q => q !== win);
         wins[win.i]++;
         laugher = win;
-        titleEl.textContent = `🏆 Král hadů: ${win.info.name}`;
-        msgEl.textContent = `🤡 ${lose.info.name}: „Druhej je první z poraženejch“`;
+        titleEl.textContent = `${pick(TAUNTS.winner)}: ${win.info.name}`;
+        msgEl.textContent = `🤡 ${lose.info.name}: „${pickTaunt([TAUNTS.loser])}“`;
         celebrate = true;
       } else {
         laugher = pick(players);
         titleEl.textContent = 'Remíza!';
-        msgEl.textContent = '„Oba jste prohráli. Gratuluju, to se jen tak nevidí.“';
+        msgEl.textContent = `„${pickTaunt([TAUNTS.draw])}“`;
       }
       $('score2').textContent = `${why} · ${score}`;
     }
@@ -749,6 +831,7 @@
       overlay.classList.remove('hidden');
       canRestart = true;
       showLaugh(laugher.skin, laugher.acc);
+      typeOut(msgEl);
       sfx.laugh(); vibrate([40, 60, 40, 60, 40, 60, 80]);
       if (celebrate) { launchConfetti(160); setTimeout(() => sfx.win(), 1300); }
       playBtn.focus();
@@ -1681,6 +1764,7 @@
   }
   function hideLaugh() {
     laughOn = false;
+    clearInterval(typeTimer);
     heroEl.classList.remove('hidden'); lc.classList.add('hidden'); overlay.classList.remove('over');
   }
   function drawLaugh(now) {
