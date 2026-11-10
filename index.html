@@ -89,12 +89,14 @@
     border-radius: 16px; padding: 10px 14px;
   }
   .score::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--accent, transparent); box-shadow: 0 0 16px var(--accent, transparent); }
-  .score small { display: block; color: var(--muted); font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 1.2px; }
+  .score small { display: block; color: var(--muted); font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 1.2px; white-space: nowrap; }
   .score b { display: inline-block; font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; }
   .score b.bump { animation: bump .35s ease-out; }
   @keyframes bump { 0% { transform: scale(1); } 40% { transform: scale(1.35); color: #fde047; } 100% { transform: scale(1); } }
   .chips { font-size: 15px; font-weight: 600; color: var(--muted); white-space: nowrap; text-align: right; }
   .chips .combo { color: #fde047; }
+  .lvlbar { position: absolute; left: 0; bottom: 0; height: 3px; width: 0; background: linear-gradient(90deg, #4ade80, #fde047); box-shadow: 0 0 8px #4ade80; transition: width .3s; }
+  #diffSeg button { padding: 7px 12px; }
 
   .wrap { position: relative; width: var(--bw); height: var(--bw); flex-shrink: 0; }
   .board {
@@ -319,7 +321,7 @@
     #overlay::before, #overlay::after { display: none; }
     #overlay .ovl-l, #overlay .ovl-r { display: flex; flex-direction: column; align-items: center; gap: 10px; flex: 1 1 0; min-width: 0; max-width: 400px; max-height: 100%; }
     #overlay .ovl-l { justify-content: center; }
-    #overlay .tip { display: none; }
+    #overlay .tip, #overlay .legend { display: none; }
     #overlay .hero { font-size: 44px; }
     #overlay .row #play { min-height: 56px; font-size: 21px; }
     #laugh { height: 128px; }
@@ -349,8 +351,8 @@
     <button class="icon-btn" id="setTop" title="Nastavení">⚙️</button>
   </div>
   <div class="scores">
-    <div class="score" id="b1"><div><small id="l1">Skóre</small><b id="v1">0</b></div><span class="chips" id="c1"></span></div>
-    <div class="score" id="b2"><div><small id="l2">Nejvyšší</small><b id="v2">0</b></div><span class="chips" id="c2"></span></div>
+    <div class="score" id="b1"><div><small id="l1">Skóre</small><b id="v1">0</b></div><span class="chips" id="c1"></span><i class="lvlbar" id="lb1"></i></div>
+    <div class="score" id="b2"><div><small id="l2">Nejvyšší</small><b id="v2">0</b></div><span class="chips" id="c2"></span><i class="lvlbar" id="lb2"></i></div>
   </div>
   <div class="stage" id="stage">
   <div class="wrap" id="wrap">
@@ -374,6 +376,11 @@
         <button data-mode="1">1 hráč</button>
         <button data-mode="2">2 hráči</button>
       </div>
+      <div class="seg" id="diffSeg">
+        <button data-diff="easy">😌 Lehká</button>
+        <button data-diff="normal">🙂 Normální</button>
+        <button data-diff="hard">😈 Těžká</button>
+      </div>
       <div class="row">
         <button id="play">Hrát</button>
         <button id="wardrobeBtn" class="secondary">🎨 Šatník</button>
@@ -384,6 +391,7 @@
         <span>🍎 +1</span><span>⭐ +5</span><span>🐭 +3 chyť ji!</span>
         <span>❄️ zpomalí</span><span>👻 projdeš vším</span><span>🌶️ 2× body</span>
         <span>🧲 přitáhne jídlo</span><span>🌀 portál</span><span>💣 nejez!</span>
+        <span>🪨 kameny</span><span>🐍 divoký had</span><span>⏳ ovoce stárne</span>
       </div>
       <div class="tip">Jez rychle za sebou → combo ×2 až ×5 · občas přijde ovocná horečka 🍉</div>
       </div>
@@ -436,7 +444,13 @@
 <script>
 (() => {
   const N = 20;
-  const BASE_SPEED = 5, MAX_SPEED = 12, SPEED_STEP = 0.2;
+  const BASE_SPEED = 5;
+  // obtížnost: rychlost, zrychlení za úroveň, jak rychle stárne ovoce, kolik kamenů
+  const DIFFS = {
+    easy:   { name: 'Lehká',    base: 4.3, step: 0.12, lvl: 0.38, max: 10,   decay: 16, rocks: 0.6, rivalSkip: 3 },
+    normal: { name: 'Normální', base: 5,   step: 0.18, lvl: 0.55, max: 12,   decay: 12, rocks: 1,   rivalSkip: 4 },
+    hard:   { name: 'Těžká',    base: 6,   step: 0.24, lvl: 0.7,  max: 14.5, decay: 9,  rocks: 1.3, rivalSkip: 0 },
+  };
   const COMBO_WINDOW = 3, POWER_TIME = 6;
   const EMOJI_FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
   const FONT = 'Fredoka, system-ui, sans-serif';
@@ -506,6 +520,20 @@
   const pick = a => a[Math.floor(Math.random() * a.length)];
 
   const TAUNTS = {
+    rock: [
+      'Kámen se nehnul. Ty jo. 🪨',
+      'Ten šutr tam ležel tisíc let. A pak jsi přišel ty.',
+      'Kámen: 1, had: 0. Kámen ani nehrál.',
+      'Geologie ti asi nic neříká, co?',
+      'Šutr nemá oči, ale tebe viděl přijíždět.',
+    ],
+    rival: [
+      'Divoký had ti děkuje za oběd. 🐍',
+      'Tvůj soupeř se směje. A já taky.',
+      'Prohrál jsi s hadem, kterého ovládá počítač. Na úrovni.',
+      'Tohle se mezi hady nezapomíná.',
+      'Divočák 1, ty 0. Odveta?',
+    ],
     wall: [
       'Ta zeď tam stála celou dobu. Nehýbala se. Fakt ne.',
       'Zeď 1 : Ty 0. A zeď ani nehrála.',
@@ -609,7 +637,10 @@
     set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
   };
 
-  let best = parseInt(store.get('had-best', 0)) || 0;
+  let diff = store.get('had-diff', 'normal'); if (!DIFFS[diff]) diff = 'normal';
+  const D = () => DIFFS[diff];
+  if (store.get('had-best-normal', null) == null && store.get('had-best', null) != null) store.set('had-best-normal', store.get('had-best', 0));   // starý rekord = Normální
+  let best = parseInt(store.get('had-best-' + diff, 0)) || 0;
   let xp = parseInt(store.get('had-xp', 0)) || 0;
   let mode = store.get('had-mode', '1') === '2' ? 2 : 1;
   let muted = store.get('had-mute', '0') === '1';
@@ -683,6 +714,7 @@
     squeak(){ tone(1800, 2600, 0.06, 'sine', 0.09); tone(2100, 2900, 0.07, 'sine', 0.09, 0.09); },
     portal(){ tone(300, 1200, 0.35, 'sine', 0.1); tone(1200, 300, 0.35, 'sine', 0.05, 0.1); },
     rattle(){ for (let k = 0; k < 5; k++) noise(0.04, 0.18, k * 0.055, 3500, 'highpass'); },
+    hiss()  { noise(0.5, 0.05, 0, 5200, 'highpass'); },
     die()   { tone(320, 45, 0.55, 'sawtooth', 0.09); },
     laugh() {
       if (muted || !audio()) return;
@@ -846,6 +878,200 @@
   let paused = false, wardrobeOpen = false, wTab = 0;
   let players = [], foods = [], portals = [], particles = [], texts = [], banners = [], confetti = [];
   let acc = 0, speed = BASE_SPEED, eaten = 0, time = 0, slowUntil = 0, frenzyUntil = 0, frenzyNext = 30;
+  // úrovně
+  let level = 1, levelEaten = 0, pendingLevel = false, rocks = new Map(), sliders = [], ring = 0, shrinkNext = 0, shrinkMax = 0;
+  let rival = null, rivalRespawnAt = 0, sheds = [], stepNo = 0;
+  const levelGoal = l => Math.min(16, 5 + l);
+  const lvlMult = () => Math.ceil(level / 2);
+  const blocked = (x, y) => x < ring || y < ring || x >= N - ring || y >= N - ring || rocks.has(x * N + y) || sliders.some(b => b.x === x && b.y === y);
+  const FRUITY = ['apple', 'gold', 'mouse'];
+  function levelCells(l) {
+    const c = [], add = (x, y) => c.push([x, y]);
+    const rect = (x0, y0, x1, y1) => { for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) add(x, y); };
+    const L = Math.min(10, l);
+    if (L === 2) { rect(3, 3, 4, 4); rect(15, 3, 16, 4); rect(3, 15, 4, 16); rect(15, 15, 16, 16); }
+    if (L === 3) { rect(5, 6, 14, 6); rect(5, 13, 14, 13); }
+    if (L === 4) { rect(6, 2, 6, 7); rect(6, 12, 6, 17); rect(13, 2, 13, 7); rect(13, 12, 13, 17); }
+    if (L === 5) { for (let k = 4; k <= 15; k++) if (k < 8 || k > 11) { add(k, 4); add(k, 15); add(4, k); add(15, k); } }
+    if (L === 6) { rect(3, 3, 4, 4); rect(15, 15, 16, 16); rect(15, 3, 16, 4); rect(3, 15, 4, 16); rect(9, 9, 10, 10); }
+    if (L === 7) { rect(5, 5, 8, 5); rect(5, 5, 5, 8); rect(11, 5, 14, 5); rect(14, 5, 14, 8); rect(5, 14, 8, 14); rect(5, 11, 5, 14); rect(11, 14, 14, 14); rect(14, 11, 14, 14); }
+    if (L === 8) { rect(10, 3, 10, 7); rect(10, 12, 10, 16); rect(3, 10, 7, 10); rect(12, 10, 16, 10); }
+    if (L === 9) { rect(4, 6, 12, 6); rect(7, 10, 15, 10); rect(4, 14, 12, 14); }
+    if (L === 10) { rect(4, 4, 5, 5); rect(14, 4, 15, 5); rect(4, 14, 5, 15); rect(14, 14, 15, 15); rect(9, 7, 10, 7); rect(9, 12, 10, 12); }
+    const k = D().rocks;
+    let out = k < 1 ? c.filter(([x, y]) => ((x * 7 + y * 13) % 10) < k * 10) : c;
+    if (k > 1 && L >= 2) for (let n = 0; n < 2 + L; n++) out.push([2 + Math.floor(Math.random() * 16), 2 + Math.floor(Math.random() * 16)]);
+    return out;
+  }
+  function nearHead(x, y, d) {
+    return players.some(p => p.alive && (() => { const h = p.body[0]; for (let k = 0; k <= d; k++) { if (h.x + p.dir.x * k === x && h.y + p.dir.y * k === y) return true; } return Math.abs(h.x - x) + Math.abs(h.y - y) <= 1; })());
+  }
+  function placeLevel() {
+    const now = performance.now();
+    let delay = 0;
+    for (const [x, y] of levelCells(level)) {
+      const key = x * N + y;
+      if (rocks.has(key) || x < ring || y < ring || x >= N - ring || y >= N - ring) continue;
+      if (players.some(p => p.body.some(b => b.x === x && b.y === y)) || (rival && rival.body.some(b => b.x === x && b.y === y))) continue;
+      if (nearHead(x, y, 4)) continue;
+      foods = foods.filter(f => { if (f.x === x && f.y === y) { if (f.type === 'apple' && !f.extra) setTimeout(() => phase === 'play' && spawn('apple'), 0); return false; } return true; });
+      portals = portals.filter(pt => !((pt.a.x === x && pt.a.y === y) || (pt.b.x === x && pt.b.y === y)));
+      rocks.set(key, { x, y, bornAt: now + delay, v: (x * 7 + y * 3) % 3 });
+      delay += 18;
+    }
+    const want = level >= 10 ? 3 : level >= 7 ? 3 : level >= 6 ? 2 : 0;
+    for (let t = 0; sliders.length < want && t < 200; t++) {
+      const x = ring + 1 + Math.floor(Math.random() * (N - 2 * ring - 2)), y = ring + 1 + Math.floor(Math.random() * (N - 2 * ring - 2));
+      if (occupied(x, y, 5)) continue;
+      const hor = Math.random() < 0.5;
+      sliders.push({ x, y, fx: x, fy: y, dx: hor ? 1 : 0, dy: hor ? 0 : 1, movedAt: now, rot: 0, bornAt: now });
+    }
+    shrinkMax = level >= 10 ? 3 : level >= 9 ? 2 : level >= 8 ? 1 : 0;
+    if (shrinkMax > ring && !shrinkNext) shrinkNext = time + 12;
+  }
+  function levelUp() {
+    pendingLevel = false;
+    level++; levelEaten = 0;
+    placeLevel();
+    recomputeSpeed();
+    const sub = { 2: 'Pozor, kameny! 🪨', 5: 'Přichází divoký had! 🐍', 6: 'Valí se balvany!', 8: 'Zdi se blíží!' }[Math.min(level, 99)] || `Body ×${lvlMult()} · rychleji!`;
+    banner(`ÚROVEŇ ${level}`, ['#4ade80', '#22d3ee', '#fde047', '#f472b6', '#fb923c'][level % 5], 1.25);
+    const W = canvas.width; floatText(W / 2, W / 2 + cell() * 2.2, sub, '#ffffff', 0.85);
+    sfx.milestone(); launchConfetti(50); punch(true); vibrate([30, 40, 30]);
+    if (level >= 5 && mode === 1 && !rival) rivalRespawnAt = time + 1.5;
+  }
+  function recomputeSpeed() { speed = Math.min(D().max, D().base + (level - 1) * D().lvl + levelEaten * D().step); }
+  // ovoce stárne: čím déle leží, tím míň bodů
+  function foodValue(f) {
+    const def = FOOD[f.type];
+    const age = FRUITY.includes(f.type) ? Math.max(0, time - f.born) : 0;
+    const k = Math.max(0.34, 1 - age / D().decay);
+    return Math.max(1, Math.round(def.pts * lvlMult() * k));
+  }
+  function shrinkTick() {
+    if (!shrinkNext || ring >= shrinkMax || time < shrinkNext) return;
+    const r = ring + 1;
+    const inRing = (x, y) => x < r || y < r || x >= N - r || y >= N - r;
+    // odklad jen kvůli hráči – balvany a divoký had zeď nezdrží
+    if (players.some(p => p.alive && p.body.some(b => inRing(b.x, b.y)))) { shrinkNext = time + 0.5; return; }
+    ring = r;
+    for (const b of sliders.filter(b => inRing(b.x, b.y))) { const c = center(b); burst(c.x, c.y, '#a8a29e', 14); }
+    sliders = sliders.filter(b => !inRing(b.x, b.y));
+    if (rival && rival.alive && rival.body.some(b => inRing(b.x, b.y))) killRival(false);
+    for (const f of foods.filter(f => inRing(f.x, f.y))) { foods = foods.filter(x => x !== f); if (f.type === 'apple' && !f.extra) spawn('apple'); }
+    portals = portals.filter(pt => !inRing(pt.a.x, pt.a.y) && !inRing(pt.b.x, pt.b.y));
+    for (const [k, rk] of rocks) if (inRing(rk.x, rk.y)) rocks.delete(k);
+    shake(0.35, 0.4); sfx.boom(); vibrate(60);
+    banner('ZDI SE BLÍŽÍ!', '#ef4444', 0.95);
+    shrinkNext = ring < shrinkMax ? time + 14 : 0;
+  }
+  function moveSliders() {
+    stepNo++;
+    if (stepNo % 2) return;
+    const now = performance.now();
+    for (const b of sliders) {
+      let nx = b.x + b.dx, ny = b.y + b.dy;
+      const rr = shrinkNext && ring < shrinkMax && time > shrinkNext - 3 ? ring + 1 : ring;
+      const busy = (x, y) => x < rr || y < rr || x >= N - rr || y >= N - rr || rocks.has(x * N + y) || sliders.some(o => o !== b && o.x === x && o.y === y) ||
+        foods.some(f => f.x === x && f.y === y) || players.some(p => p.body.some(s => s.x === x && s.y === y)) || (rival && rival.body.some(s => s.x === x && s.y === y)) ||
+        portals.some(pt => (pt.a.x === x && pt.a.y === y) || (pt.b.x === x && pt.b.y === y));
+      if (busy(nx, ny)) { b.dx = -b.dx; b.dy = -b.dy; nx = b.x + b.dx; ny = b.y + b.dy; if (busy(nx, ny)) continue; }
+      b.fx = b.x; b.fy = b.y; b.x = nx; b.y = ny; b.movedAt = now; b.rot += 1;
+    }
+  }
+
+  // ---------- divoký had (soupeř od 5. úrovně) ----------
+  function spawnRival() {
+    const h = players[0] && players[0].body[0];
+    const free = freeCells(0).filter(c => !h || Math.abs(c.x - h.x) + Math.abs(c.y - h.y) >= 8);
+    for (let t = 0; t < 60 && free.length; t++) {
+      const c0 = pick(free), d = pick([{ x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 }]);
+      const body = [0, 1, 2].map(k => ({ x: c0.x - d.x * k, y: c0.y - d.y * k }));
+      if (body.some(b => b.x < ring || b.y < ring || b.x >= N - ring || b.y >= N - ring || occupied(b.x, b.y))) continue;
+      const skin = sel[0].skin === 'python' ? 'lava' : 'python';
+      rival = { i: 2, body, prev: body.map(b => ({ ...b })), dir: d, queue: [], score: 0, alive: true, rival: true,
+        info: { name: 'Divoký had', gen: 'divokého hada' }, skin, acc: 'none', combo: 0, lastEat: -99, ghostUntil: 0, chiliUntil: 0, magnetUntil: 0,
+        milestone: 0, blinkAt: 1500, bulges: [], cause: null, deathAt: 0, shattered: false, skip: 0 };
+      const cc = center(c0);
+      burst(cc.x, cc.y, '#a3e635', 18); floatText(cc.x, cc.y - cell(), 'Divoký had! 🐍', '#bef264', 0.8);
+      sfx.hiss();
+      return;
+    }
+    rivalRespawnAt = time + 2;
+  }
+  function rivalPlan() {
+    const r = rival;
+    if (!r || !r.alive) return;
+    r.prev = r.body.map(b => ({ ...b }));
+    r.skip++;
+    const sk = D().rivalSkip;
+    if (sk && r.skip % sk === 0) { r.next = null; r.newBody = r.body; return; }
+    const h = r.body[0], bl = new Set();
+    for (const p of players) if (p.alive) { p.body.forEach(b => bl.add(b.x * N + b.y)); bl.add((p.body[0].x + p.dir.x) * N + p.body[0].y + p.dir.y); }
+    r.body.forEach((b, i) => { if (i < r.body.length - 1) bl.add(b.x * N + b.y); });
+    const rr = shrinkNext && ring < shrinkMax && time > shrinkNext - 3 ? ring + 1 : 0;
+    const bad = (x, y) => x < rr || y < rr || x >= N - rr || y >= N - rr || blocked(x, y) || bl.has(x * N + y) || foods.some(f => f.type === 'bomb' && f.x === x && f.y === y);
+    const DIRS = [{ x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 }];
+    const area = (sx, sy) => { const seen = new Set([sx * N + sy]), st = [[sx, sy]]; while (st.length && seen.size < 60) { const [x, y] = st.pop(); for (const d of DIRS) { const nx = x + d.x, ny = y + d.y, k = nx * N + ny; if (bad(nx, ny) || seen.has(k)) continue; seen.add(k); st.push([nx, ny]); } } return seen.size; };
+    const food = new Set(foods.filter(f => FRUITY.includes(f.type)).map(f => f.x * N + f.y));
+    const prev = new Map([[h.x * N + h.y, -1]]), q = [h.x * N + h.y];
+    let goal = -1;
+    while (q.length) {
+      const k = q.shift(), x = Math.floor(k / N), y = k % N;
+      if (food.has(k) && k !== h.x * N + h.y) { goal = k; break; }
+      for (const d of DIRS) { const nx = x + d.x, ny = y + d.y, kk = nx * N + ny; if (bad(nx, ny) || prev.has(kk)) continue; prev.set(kk, k); q.push(kk); }
+    }
+    let mv = null;
+    if (goal >= 0) {
+      let k = goal; while (prev.get(k) !== h.x * N + h.y) k = prev.get(k);
+      const x = Math.floor(k / N), y = k % N;
+      if (area(x, y) >= r.body.length + 2) mv = { x: x - h.x, y: y - h.y };
+    }
+    if (!mv) { let bestA = 0; for (const d of DIRS) { if (d.x === -r.dir.x && d.y === -r.dir.y) continue; const nx = h.x + d.x, ny = h.y + d.y; if (bad(nx, ny)) continue; const a = area(nx, ny); if (a > bestA) { bestA = a; mv = d; } } }
+    r.trapped = !mv;
+    if (mv) r.dir = mv;
+    r.next = { x: h.x + r.dir.x, y: h.y + r.dir.y };
+    r.food = foods.find(f => f.x === r.next.x && f.y === r.next.y && f.type !== 'bomb') || null;
+    r.newBody = [r.next, ...r.body];
+    if (!r.food || r.body.length >= 9) r.newBody.pop();
+  }
+  function rivalApply() {
+    const r = rival;
+    if (!r || !r.alive) return;
+    if (!r.next) { r.prev = r.body.map(b => ({ ...b })); return; }
+    const { x, y } = r.next;
+    const hitPlayer = players.some(p => p.alive && !isGhost(p) && p.body.some(b => b.x === x && b.y === y));
+    if (x < 0 || y < 0 || x >= N || y >= N || blocked(x, y) || hitPlayer || at(r.newBody.slice(1), x, y)) {
+      killRival(hitPlayer || r.trapped);
+      return;
+    }
+    r.body = r.newBody;
+    if (r.food && foods.includes(r.food)) {
+      const f = r.food, pos = center(f);
+      foods = foods.filter(o => o !== f);
+      if (f.type === 'apple' && !f.extra) spawn('apple');
+      r.bulges.push({ pos: 0.4 });
+      burst(pos.x, pos.y, '#a3e635', 10);
+      floatText(pos.x, pos.y - cell() * 0.4, 'Ukradl! 😤', '#bef264', 0.7);
+      sfx.squeak();
+    }
+  }
+  function killRival(byPlayer) {
+    const r = rival;
+    r.alive = false; r.deathAt = performance.now(); r.prev = r.body.map(b => ({ ...b }));
+    const h = center(r.body[0]);
+    burst(h.x, h.y, '#a3e635', 20); emojiBurst(h.x, h.y, ['💫', '🐍'], 4);
+    const p = players[0];
+    if (byPlayer && p && p.alive) {
+      const pts = 10 * lvlMult();
+      p.score += pts;
+      floatText(h.x, h.y - cell() * 0.5, `+${pts} Obklíčil jsi ho!`, '#fde047', 0.9);
+      sfx.gold(); vibrate([20, 30, 20]); punch(true);
+    }
+    rivalRespawnAt = time + 9;
+    setTimeout(() => { if (rival === r) rival = null; }, 1600);
+  }
+
   let countdown = 0, countAcc = 0, shakeT = 0, shakeMax = 0.4, shakePow = 0.35, flashT = 0, flashColor = '255,80,80';
   let slowmoUntil = 0;
   const cam = { x: 0, y: 0, k: 0, target: 0 };
@@ -864,7 +1090,9 @@
   }
 
   function occupied(x, y, margin = 0) {
+    if (blocked(x, y)) return true;
     if (players.some(p => p.body.some(s => s.x === x && s.y === y))) return true;
+    if (rival && rival.body.some(s => s.x === x && s.y === y)) return true;
     if (foods.some(f => f.x === x && f.y === y)) return true;
     if (portals.some(pt => (pt.a.x === x && pt.a.y === y) || (pt.b.x === x && pt.b.y === y))) return true;
     if (margin) return players.some(p => p.alive && Math.abs(p.body[0].x - x) + Math.abs(p.body[0].y - y) <= margin);
@@ -904,7 +1132,10 @@
     audio();
     players = mode === 1 ? [makePlayer(0, 9, 10, 1)] : [makePlayer(0, 4, 5, 1), makePlayer(1, 15, 14, -1)];
     foods = []; portals = []; particles = []; texts = []; banners = []; confetti = [];
-    acc = 0; eaten = 0; speed = BASE_SPEED; time = 0; slowUntil = 0; frenzyUntil = 0;
+    acc = 0; eaten = 0; time = 0; slowUntil = 0; frenzyUntil = 0;
+    level = 1; levelEaten = 0; pendingLevel = false; rocks = new Map(); sliders = []; ring = 0; shrinkNext = 0; shrinkMax = 0;
+    rival = null; rivalRespawnAt = 0; sheds = []; stepNo = 0;
+    recomputeSpeed();
     frenzyNext = 22 + Math.random() * 10;
     cam.k = cam.target = 0; zoomAmt = 0.14;
     replay = null; stopLaughSound();
@@ -937,11 +1168,17 @@
 
   function step() {
     const live = players.filter(p => p.alive);
+    moveSliders();
+    if (rival && !rival.alive && performance.now() - rival.deathAt > 1600) rival = null;
+    if (!rival && level >= 5 && mode === 1 && rivalRespawnAt && time >= rivalRespawnAt) { rivalRespawnAt = 0; spawnRival(); }
+    rivalPlan();
     for (const p of live) {
       if (p.queue.length) p.dir = p.queue.shift();
       p.prev = p.body.map(s => ({ ...s }));
+      // duch, kterému končí kouzlo uvnitř kamene, dostane chvilku navíc
+      if (p.ghostUntil > 0 && !isGhost(p) && blocked(p.body[0].x, p.body[0].y)) p.ghostUntil = time + 0.3;
       let nx = p.body[0].x + p.dir.x, ny = p.body[0].y + p.dir.y;
-      if (isGhost(p)) { nx = (nx + N) % N; ny = (ny + N) % N; }
+      if (isGhost(p)) { const A = N - 2 * ring; nx = ring + (((nx - ring) % A) + A) % A; ny = ring + (((ny - ring) % A) + A) % A; }
       p.tele = null;
       for (const pt of portals) {
         if (nx === pt.a.x && ny === pt.a.y) { p.tele = pt; nx = pt.b.x; ny = pt.b.y; break; }
@@ -959,9 +1196,11 @@
       if (isGhost(p)) continue;
       const { x, y } = p.next;
       let cause = null, other = null;
-      if (x < 0 || y < 0 || x >= N || y >= N) cause = 'wall';
+      if (x < ring || y < ring || x >= N - ring || y >= N - ring) cause = 'wall';
+      else if (rocks.has(x * N + y) || sliders.some(b => b.x === x && b.y === y)) cause = 'rock';
       else if (at(p.newBody.slice(1), x, y)) cause = 'self';
       else if (p.bomb) cause = 'bomb';
+      else if (rival && rival.alive && at(rival.newBody || rival.body, x, y)) cause = 'rival';
       else for (const o of live) {
         if (o === p || isGhost(o)) continue;
         if (at(o.newBody, x, y)) {
@@ -985,7 +1224,16 @@
         for (let k = 0; k < 3; k++) particles.push({ x: t.x, y: t.y, vx: (Math.random() - .5) * cell() * 2, vy: -Math.random() * cell() * 3, life: 1, decay: 2 + Math.random(), r: cell() * (0.1 + Math.random() * 0.12), color: pick(['#ff5533', '#ffb020', '#fde047']) });
       }
     }
+    rivalApply();
     moveCritters();
+    shrinkTick();
+    // syčení, když hrozí náraz
+    for (const p of players) {
+      const d = p.alive && danger(p), nowMs = performance.now();
+      if (d && !p.wasDanger && nowMs - (p.hissAt || 0) > 1600) { p.hissAt = nowMs; sfx.hiss(); }
+      p.wasDanger = d;
+    }
+    if (pendingLevel && !dying.length) levelUp();
     recordSnap();
     if (dying.length) {
       const alive = players.filter(p => p.alive);
@@ -1001,6 +1249,8 @@
       time, speed, slowUntil, frenzyUntil,
       players: players.map(p => ({ ...p, body: p.body.map(q => ({ ...q })), prev: p.prev.map(q => ({ ...q })), queue: [], bulges: p.bulges.map(b => ({ ...b })) })),
       foods: foods.map(f => ({ ...f })), portals: portals.slice(),
+      rocks, ring, level, sliders: sliders.map(b => ({ ...b })),
+      rival: rival ? { ...rival, body: rival.body.map(q => ({ ...q })), prev: rival.prev.map(q => ({ ...q })), bulges: [] } : null,
     });
     while (snaps.length > 2 && snaps[1].time < time - REPLAY_SPAN - 0.4) snaps.shift();
   }
@@ -1036,12 +1286,13 @@
       for (const q of a.players) if (!q.alive) { q.deathAt = now + 250; q.shattered = false; }
       shake(0.5, 0.5); flash('255,80,80', 0.3); sfx.die();
     }
-    const keep = { players, foods, portals, time, acc, speed, slowUntil, frenzyUntil, phase };
+    const keep = { players, foods, portals, time, acc, speed, slowUntil, frenzyUntil, phase, rocks, ring, level, sliders, rival };
     players = a.players; foods = a.foods; portals = a.portals; speed = a.speed; slowUntil = a.slowUntil; frenzyUntil = a.frenzyUntil;
+    rocks = a.rocks; ring = a.ring; level = a.level; sliders = a.sliders; rival = a.rival;
     time = b ? a.time + tt * (b.time - a.time) : a.time; phase = 'play';
     acc = tt / effSpeed();
     try { draw(now); }
-    finally { ({ players, foods, portals, time, acc, speed, slowUntil, frenzyUntil, phase } = keep); }
+    finally { ({ players, foods, portals, time, acc, speed, slowUntil, frenzyUntil, phase, rocks, ring, level, sliders, rival } = keep); }
     // filmové pruhy a nápis
     const W = canvas.width, c = W / N;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -1088,13 +1339,14 @@
     foods = foods.filter(x => x !== f);
     p.combo = time - p.lastEat < COMBO_WINDOW ? Math.min(5, p.combo + 1) : 1;
     p.lastEat = time;
-    p.bulges.push({ pos: 0.4 });
+    p.bulges.push({ pos: 0.4, big: true });
     const mult = p.combo * (isChili(p) ? 2 : 1);
-    const pts = def.pts * mult;
+    const pts = foodValue(f) * mult;
     const before = p.score;
     p.score += pts;
     eaten++;
-    speed = Math.min(MAX_SPEED, BASE_SPEED + eaten * SPEED_STEP);
+    if (FRUITY.includes(f.type)) { levelEaten++; if (levelEaten >= levelGoal(level)) pendingLevel = true; }
+    recomputeSpeed();
 
     burst(pos.x, pos.y, def.glow, f.type === 'gold' ? 26 : 14);
     floatText(pos.x, pos.y - c * 0.3, '+' + pts, '#ffffff', 0.8);
@@ -1129,6 +1381,7 @@
     // milníky
     while (p.milestone < MILESTONES.length && p.score >= MILESTONES[p.milestone][0]) {
       if (before < MILESTONES[p.milestone][0]) {
+        if (p.milestone >= 1) molt(p);
         banner(MILESTONES[p.milestone][1], ['#fde047', '#fb923c', '#f472b6', '#22d3ee'][p.milestone % 4], 1.3);
         sfx.milestone();
         launchConfetti(50);
@@ -1136,6 +1389,33 @@
       p.milestone++;
     }
     updateHud();
+  }
+
+  // svlékání kůže: stará kůže zůstane chvíli ležet, had se zaleskne
+  function molt(p) {
+    sheds.push({ pts: p.body.map(b => ({ x: b.x + 0.5, y: b.y + 0.5 })), at: performance.now() });
+    if (sheds.length > 3) sheds.shift();
+    p.freshUntil = performance.now() + 1800;
+    const h = center(p.body[0]);
+    floatText(h.x, h.y + cell() * 1.2, 'Svlékl kůži! ✨', '#fef3c7', 0.75);
+    emojiBurst(h.x, h.y, ['✨'], 6);
+  }
+  function drawSheds(c, now) {
+    for (const sh of sheds) {
+      const age = (now - sh.at) / 6000;
+      if (age >= 1) continue;
+      const a = 0.5 * (1 - age) * Math.min(1, (now - sh.at) / 250), P = sh.pts;
+      if (P.length < 2) continue;
+      ctx.save();
+      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      ctx.beginPath(); ctx.moveTo(P[0].x * c, P[0].y * c);
+      for (let k = 1; k < P.length - 1; k++) { const mx = (P[k].x + P[k + 1].x) / 2 * c, my = (P[k].y + P[k + 1].y) / 2 * c; ctx.quadraticCurveTo(P[k].x * c, P[k].y * c, mx, my); }
+      ctx.lineTo(P[P.length - 1].x * c, P[P.length - 1].y * c);
+      ctx.strokeStyle = `rgba(236,226,196,${a})`; ctx.lineWidth = c * 0.62; ctx.stroke();
+      ctx.setLineDash([c * 0.1, c * 0.12]); ctx.strokeStyle = `rgba(255,255,255,${a * 0.7})`; ctx.lineWidth = c * 0.42; ctx.stroke();
+      ctx.restore();
+    }
+    if (sheds.length && now - sheds[sheds.length - 1].at > 6000) sheds = sheds.filter(sh => now - sh.at < 6000);
   }
 
   function kill(p, cause, other) {
@@ -1189,6 +1469,8 @@
       case 'wall': return `${n} to napálil do zdi. 🧱`;
       case 'self': return `${n} se zamotal sám do sebe. 🙃`;
       case 'bomb': return `${n} spolkl bombu. 💥`;
+      case 'rock': return `${n} narazil do kamene. 🪨`;
+      case 'rival': return `${n} vjel do divokého hada. 🐍`;
       case 'other': return `${n} vjel do ${p.killer.info.gen}.`;
       default: return '';
     }
@@ -1203,18 +1485,20 @@
     if (mode === 1) {
       const p = players[0], s = p.score;
       const record = s > best;
+      const lvlBest = parseInt(store.get('had-lvl-' + diff, 0)) || 0;
+      if (level > lvlBest) store.set('had-lvl-' + diff, level);
       const general = [...(TAUNTS[p.cause] || MSG1[p.cause] || TAUNTS.wall), ...(s < 10 ? TAUNTS.low : []), ...(s > 50 ? TAUNTS.high : [])];
       const pools = record ? [TAUNTS.record, general] : time < 5 ? [TAUNTS.fast, general] : [general];
       if (record) {
-        best = s; store.set('had-best', best);
+        best = s; store.set('had-best-' + diff, best);
         titleEl.textContent = 'Nový rekord! 🏆';
         celebrate = s > 0;
       } else titleEl.textContent = 'Konec hry';
       tauntText = pickTaunt(pools);
       msgEl.textContent = `„${tauntText}“`;
       laughDef = pickLaugh(time < 5, s < 10);
-      $('score2').textContent = record ? `Skóre: ${s}` : `Skóre: ${s} · rekord: ${best}`;
-      prepareLbForm(s);
+      $('score2').textContent = `Úroveň ${level} · skóre ${s}` + (record ? '' : ` · rekord ${best}`) + ` (${D().name})`;
+      if (diff === 'normal') prepareLbForm(s);
     } else {
       const headOn = dying.some(d => d.cause === 'head');
       const why = headOn ? 'Čelní srážka! 💥' : dying.map(d => deathLine(d.p)).join(' ');
@@ -1233,7 +1517,7 @@
         tauntText = pickTaunt([TAUNTS.draw]);
         msgEl.textContent = `„${tauntText}“`;
       }
-      $('score2').textContent = `${why} · ${score}`;
+      $('score2').textContent = `${why} · ${score} · úroveň ${level}`;
     }
     const before = xp;
     xp += players.reduce((s, p) => s + p.score, 0);
@@ -1400,7 +1684,7 @@
       else if (i < 1.8) w = base * (0.82 + 0.18 * smooth((i - 0.95) / 0.85));
       if (i > tailStart) w *= Math.max(0.14, Math.pow(1 - (i - tailStart) / T, 0.85));
       let b = 0; for (const u of bulges) b += Math.exp(-((i - u.pos) ** 2) / 0.45);
-      return w + Math.min(1.4, b) * c * 0.34;
+      return w + Math.min(1.4, b) * c * 0.44;
     };
     const colorAt = i => skin.side(i, i / nn, now);
     const headCol = skin.head || colorAt(0);
@@ -1670,14 +1954,19 @@
       g.strokeStyle = '#ff4d6d'; g.lineWidth = c * 0.11;
       g.beginPath(); g.moveTo(c * 0.38, 0);
       g.quadraticCurveTo(c * 0.72, c * 0.05, c * 0.58, hw * (0.75 + Math.sin(now / 60) * 0.08)); g.stroke();
-    } else if (mood === 'dead' || (mood === 'normal' && now % 1700 < 260)) {
-      const L = c * (0.5 + (mood === 'dead' ? 0 : Math.sin(now / 30) * 0.06));
-      const bx = c * 0.45, tx = bx + L;
-      g.strokeStyle = '#ff4d6d'; g.lineWidth = c * 0.07;
-      g.beginPath(); g.moveTo(bx, 0); g.lineTo(tx, 0);
-      g.moveTo(tx, 0); g.lineTo(tx + c * 0.14, c * 0.1);
-      g.moveTo(tx, 0); g.lineTo(tx + c * 0.14, -c * 0.1);
-      g.stroke();
+    } else {
+      // jazyk: dvě rychlá mrsknutí, častěji když had „čichá“ jídlo
+      const per = o.sniff ? 1100 : 2400, ph = (now + (p.i || 0) * 700) % per;
+      const flick = mood === 'dead' ? 1 : (mood === 'normal' || mood === 'scared') && ph < 440 ? Math.abs(Math.sin(ph / 440 * Math.PI * 2)) : 0;
+      if (flick > 0.05) {
+        const L = c * (mood === 'dead' ? 0.5 : 0.12 + 0.48 * flick), spread = c * (0.1 + (mood === 'dead' ? 0 : Math.sin(now / 22) * 0.05));
+        const bx = c * 0.45, tx = bx + L, wob = mood === 'dead' ? 0 : Math.sin(now / 35) * c * 0.04;
+        g.strokeStyle = '#ff4d6d'; g.lineWidth = c * 0.07; g.lineCap = 'round';
+        g.beginPath(); g.moveTo(bx, 0); g.quadraticCurveTo(bx + L * 0.5, wob, tx, 0);
+        g.moveTo(tx, 0); g.lineTo(tx + c * 0.14, spread);
+        g.moveTo(tx, 0); g.lineTo(tx + c * 0.14, -spread);
+        g.stroke();
+      }
     }
     // nozdry
     g.fillStyle = skin.neon ? skin.neon2 : 'rgba(0,0,0,0.42)';
@@ -1874,7 +2163,8 @@
     const h = p.body[0];
     for (let k = 1; k <= 2; k++) {
       const x = h.x + p.dir.x * k, y = h.y + p.dir.y * k;
-      if (x < 0 || y < 0 || x >= N || y >= N) return true;
+      if (x < 0 || y < 0 || x >= N || y >= N || blocked(x, y)) return true;
+      if (rival && rival.alive && rival.body.some(s => s.x === x && s.y === y)) return true;
       if (foods.some(f => f.type === 'bomb' && f.x === x && f.y === y)) return true;
       if (players.some(q => q.body.some((s, j) => s.x === x && s.y === y && !(q === p && j === q.body.length - 1)))) return true;
     }
@@ -1895,7 +2185,10 @@
         const a = pts[i - 1], b = pts[i + 1] || q;
         const dx = a.x - b.x, dy = a.y - b.y, len = Math.hypot(dx, dy) || 1;
         if (len > c * 3) return q;
-        const off = Math.sin(i * 0.9 - now / 110) * c * 0.08 * Math.min(1, i / 3);
+        // plazení: vlna stojí vůči zemi a tělo jí proplouvá (jako skutečný had)
+        const travel = phase === 'play' ? time * effSpeed() : now / 900;
+        const env = Math.min(1, i / 3) * (i > pts.length - 3 ? 0.55 : 1);
+        const off = Math.sin((travel - i) * 0.95) * c * 0.15 * env;
         return { x: q.x - dy / len * off, y: q.y + dx / len * off, i };
       });
     } else {
@@ -1930,7 +2223,7 @@
 
     let alpha = 1;
     if (mood === 'ghost') alpha = p.ghostUntil - time < 1.5 && Math.floor(now / 100) % 2 ? 0.8 : 0.55;
-    const glowColor = isChili(p) ? '#ff7a2a' : (comboActive(p) && p.combo >= 3 ? '#fde047' : null);
+    const glowColor = isChili(p) ? '#ff7a2a' : p.freshUntil > now ? '#fff7d6' : (comboActive(p) && p.combo >= 3 ? '#fde047' : null);
 
     if (p.alive && SKIN[p.skin].sparkle && Math.random() < 0.07) {
       const q = pick(pts);
@@ -1938,7 +2231,7 @@
     }
 
     renderSnake(ctx, c, pts, p, now, {
-      mood, look, mouth, alpha, glowColor, leader, magnet: p.alive && isMagnet(p),
+      mood, look, mouth, alpha, glowColor, leader, magnet: p.alive && isMagnet(p), sniff: td <= 4,
       blink: now > p.blinkAt,
       filter: deathK > 0 ? `grayscale(${deathK}) brightness(${1 + deathK * 0.9})` : '',
     });
@@ -2012,6 +2305,96 @@
     const k = f.movedAt ? Math.min(1, (now - f.movedAt) / 150) : 1;
     const fx2 = f.fx ?? f.x, fy = f.fy ?? f.y;
     return { x: (fx2 + (f.x - fx2) * k + 0.5) * cell(), y: (fy + (f.y - fy) * k + 0.5) * cell() };
+  }
+
+  // ---------- kameny, balvany a zdi zmenšující se plochy ----------
+  const stoneCache = {};
+  function stoneSprite(c, v) {
+    const key = Math.round(c) + ':' + v;
+    if (stoneCache[key]) return stoneCache[key];
+    const S = Math.ceil(c * 1.2), cv = document.createElement('canvas'); cv.width = cv.height = S;
+    const g = cv.getContext('2d'), m = S / 2, r = c * 0.5;
+    g.translate(m, m); g.rotate(v * 2.1);
+    g.beginPath();
+    const n = 9;
+    for (let k = 0; k <= n; k++) { const a = k / n * TAU, rr = r * (0.86 + 0.14 * Math.sin(k * 2.7 + v * 1.9)); k ? g.lineTo(Math.cos(a) * rr, Math.sin(a) * rr * 0.9) : g.moveTo(Math.cos(a) * rr, Math.sin(a) * rr * 0.9); }
+    g.closePath();
+    const gr = g.createRadialGradient(-r * 0.35, -r * 0.4, r * 0.1, 0, 0, r * 1.1);
+    gr.addColorStop(0, ['#b8bcc6', '#c2b8a8', '#a9b3ad'][v]); gr.addColorStop(0.55, ['#7d828d', '#857b6c', '#6f7a73'][v]); gr.addColorStop(1, '#3c3f47');
+    g.fillStyle = gr; g.fill();
+    g.strokeStyle = 'rgba(0,0,0,0.45)'; g.lineWidth = c * 0.05; g.stroke();
+    g.strokeStyle = 'rgba(0,0,0,0.3)'; g.lineWidth = c * 0.03;
+    g.beginPath(); g.moveTo(-r * 0.2, -r * 0.1); g.lineTo(r * 0.1, r * 0.15); g.lineTo(r * 0.05, r * 0.45); g.stroke();
+    g.fillStyle = 'rgba(132,204,22,0.55)';
+    for (let k = 0; k < 3; k++) { g.beginPath(); g.arc(r * (0.2 + 0.15 * k) - r * 0.2, -r * 0.55 + k * r * 0.08, r * 0.14, 0, TAU); g.fill(); }
+    g.fillStyle = 'rgba(255,255,255,0.25)'; g.beginPath(); g.ellipse(-r * 0.35, -r * 0.35, r * 0.22, r * 0.12, -0.6, 0, TAU); g.fill();
+    return (stoneCache[key] = cv);
+  }
+  function drawArena(c, now) {
+    const W = canvas.width;
+    // zeď zmenšené plochy + výstraha před dalším posunem
+    if (ring > 0) {
+      ctx.fillStyle = '#1b1f29';
+      ctx.fillRect(0, 0, W, ring * c); ctx.fillRect(0, W - ring * c, W, ring * c);
+      ctx.fillRect(0, 0, ring * c, W); ctx.fillRect(W - ring * c, 0, ring * c, W);
+      ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = c * 0.04;
+      for (let k = 0; k < N; k++) for (let j = 0; j < N; j++) {
+        if (!(k < ring || j < ring || k >= N - ring || j >= N - ring)) continue;
+        ctx.strokeRect(k * c + ((j % 2) * c * 0.5) % c, j * c, c, c);
+      }
+      ctx.strokeStyle = 'rgba(239,68,68,0.55)'; ctx.lineWidth = c * 0.08;
+      ctx.strokeRect(ring * c, ring * c, W - 2 * ring * c, W - 2 * ring * c);
+    }
+    if (shrinkNext && ring < shrinkMax && time > shrinkNext - 3 && phase === 'play') {
+      const r = ring + 1, a = 0.18 + 0.22 * (Math.sin(now / 90) > 0 ? 1 : 0);
+      ctx.fillStyle = `rgba(239,68,68,${a})`;
+      ctx.fillRect(ring * c, ring * c, W - 2 * ring * c, c); ctx.fillRect(ring * c, W - r * c, W - 2 * ring * c, c);
+      ctx.fillRect(ring * c, ring * c, c, W - 2 * ring * c); ctx.fillRect(W - r * c, ring * c, c, W - 2 * ring * c);
+    }
+    // kameny (při vzniku vyskočí)
+    for (const rk of rocks.values()) {
+      const k = Math.max(0, Math.min(1, (now - rk.bornAt) / 260));
+      if (k <= 0) continue;
+      const sc = k < 1 ? k * (1 + Math.sin(k * Math.PI) * 0.35) : 1, sp = stoneSprite(c, rk.v), S = sp.width;
+      const x = (rk.x + 0.5) * c, y = (rk.y + 0.5) * c;
+      ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath(); ctx.ellipse(x + c * 0.06, y + c * 0.3, c * 0.42 * sc, c * 0.12 * sc, 0, 0, TAU); ctx.fill();
+      ctx.drawImage(sp, x - S / 2 * sc, y - S / 2 * sc, S * sc, S * sc);
+    }
+    // koulející se balvany
+    const dur = 2000 / Math.max(1, effSpeed());
+    for (const b of sliders) {
+      const k = Math.max(0, Math.min(1, (now - b.movedAt) / dur)), e = k * k * (3 - 2 * k);
+      const x = (b.fx + (b.x - b.fx) * e + 0.5) * c, y = (b.fy + (b.y - b.fy) * e + 0.5) * c;
+      const pop = Math.max(0, Math.min(1, (now - b.bornAt) / 300));
+      if (pop <= 0) continue;
+      ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.beginPath(); ctx.ellipse(x + c * 0.05, y + c * 0.36, c * 0.42, c * 0.12, 0, 0, TAU); ctx.fill();
+      ctx.save(); ctx.translate(x, y); ctx.rotate((b.rot - 1 + e) * (b.dx || b.dy) * 1.2); ctx.scale(pop, pop);
+      const sp = stoneSprite(c * 1.05, 0), S = sp.width;
+      ctx.drawImage(sp, -S / 2, -S / 2);
+      ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = c * 0.05;
+      ctx.beginPath(); ctx.arc(0, 0, c * 0.3, 0.3, 2.2); ctx.stroke();
+      ctx.restore();
+      // šipka směru
+      ctx.fillStyle = 'rgba(253,224,71,0.85)';
+      const ax = x + (b.dx) * c * 0.62, ay = y + (b.dy) * c * 0.62, ang = Math.atan2(b.dy, b.dx);
+      ctx.save(); ctx.translate(ax, ay); ctx.rotate(ang); ctx.beginPath(); ctx.moveTo(c * 0.14, 0); ctx.lineTo(-c * 0.08, -c * 0.11); ctx.lineTo(-c * 0.08, c * 0.11); ctx.closePath(); ctx.fill(); ctx.restore();
+    }
+  }
+  // cenovka nad ovocem: kolik teď dá bodů (stárne)
+  function drawFoodValues(c, now) {
+    if (phase !== 'play' && phase !== 'countdown') return;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (const f of foods) {
+      if (!FRUITY.includes(f.type)) continue;
+      const v = foodValue(f), full = FOOD[f.type].pts * lvlMult();
+      if (full <= 1 && v >= full) continue;
+      const pos = foodPos(f, now), fresh = v / full;
+      const x = pos.x + c * 0.42, y = pos.y - c * 0.45;
+      ctx.font = `700 ${c * 0.36}px ${FONT}`;
+      ctx.lineWidth = c * 0.1; ctx.strokeStyle = 'rgba(0,0,0,0.7)'; ctx.strokeText('+' + v, x, y);
+      ctx.fillStyle = fresh > 0.75 ? '#fde047' : fresh > 0.5 ? '#fdba74' : '#cbd5e1';
+      ctx.fillText('+' + v, x, y);
+    }
   }
 
   function drawFood(f, c, now) {
@@ -2099,14 +2482,18 @@
       ctx.lineWidth = c * 0.4; ctx.strokeRect(0, 0, W, W);
     }
 
+    drawArena(c, now);
+    drawSheds(c, now);
     for (const pt of portals) { drawPortal(pt.a, '#38bdf8', c, now, pt); drawPortal(pt.b, '#fb923c', c, now, pt); }
     for (const f of foods) drawFood(f, c, now);
+    drawFoodValues(c, now);
 
     let leader = null;
     if (mode === 2 && players.length === 2 && players[0].score !== players[1].score)
       leader = players[0].score > players[1].score ? players[0] : players[1];
     const t = phase === 'play' ? Math.min(1, acc * effSpeed()) : 1;
     for (const p of players) if (!p.alive) drawSnake(p, 1, c, now, false);
+    if (rival) drawSnake(rival, rival.alive ? t : 1, c, now, false);
     for (const p of players) if (p.alive) drawSnake(p, phase === 'countdown' ? 1 : t, c, now, p === leader);
 
     for (const p of particles) {
@@ -2550,11 +2937,13 @@
   }
   function updateHud(reset) {
     if (reset) for (const k in hudCache) delete hudCache[k];
+    const prog = phase === 'menu' ? 0 : Math.min(1, levelEaten / levelGoal(level));
+    if (hudCache.prog !== prog) { hudCache.prog = prog; $('lb1').style.width = $('lb2').style.width = (prog * 100).toFixed(1) + '%'; }
     const p0 = players[0], p1 = players[1];
     const acc0 = SKIN[sel[0].skin].accent, acc1 = SKIN[sel[1].skin].accent;
     if (mode === 1) {
-      setText('l1', 'Skóre'); setText('v1', String(p0 ? p0.score : 0), true);
-      setText('l2', 'Nejvyšší'); setText('v2', String(best), true);
+      setText('l1', phase === 'menu' ? 'Skóre' : `Skóre · úr. ${level}`); setText('v1', String(p0 ? p0.score : 0), true);
+      setText('l2', `Rekord ${{ easy: '😌', normal: '🙂', hard: '😈' }[diff]}`); setText('v2', String(best), true);
       setText('c1', chips(p0)); setText('c2', '🏆');
       $('b1').style.setProperty('--accent', acc0); $('b2').style.setProperty('--accent', '#fde047');
     } else {
@@ -2598,6 +2987,13 @@
     if (lastBW) resize();
   }
 
+  function setDiff(d) {
+    if (!DIFFS[d]) return;
+    diff = d; store.set('had-diff', d);
+    best = parseInt(store.get('had-best-' + diff, 0)) || 0;
+    document.querySelectorAll('#diffSeg button').forEach(b => b.classList.toggle('active', b.dataset.diff === d));
+    updateHud(true);
+  }
   function setMuted(v) {
     muted = v; store.set('had-mute', v ? '1' : '0'); $('mute').textContent = v ? '🔇' : '🔊';
     if (v && keepAlive) keepAlive.pause();
@@ -2774,6 +3170,7 @@
 
   playBtn.addEventListener('click', tryStart);
   document.querySelectorAll('#modeSeg button').forEach(b => b.addEventListener('click', () => setMode(+b.dataset.mode)));
+  document.querySelectorAll('#diffSeg button').forEach(b => b.addEventListener('click', () => { setDiff(b.dataset.diff); sfx.click(); }));
   $('mute').addEventListener('click', () => setMuted(!muted));
   $('music').addEventListener('click', () => { audio(); setMusic(!musicOn); });
   $('pause').addEventListener('click', togglePause);
@@ -2820,6 +3217,7 @@
   resize();
   setMuted(muted);
   setMusic(musicOn);
+  setDiff(diff);
   setMode(mode);
   requestAnimationFrame(frame);
 

@@ -8,6 +8,13 @@ Jednoduchá, ale zábavná hra Had v jednom souboru `index.html` – hraje se p�
 
 Stačí otevřít `index.html` v prohlížeči.
 
+## Úrovně a obtížnost
+- Tři obtížnosti (😌 Lehká, 🙂 Normální, 😈 Těžká), každá má vlastní rekord. Online žebříček je jen pro Normální.
+- Každá úroveň potřebuje víc ovoce (6, 7, 8 … max 16). S úrovní roste rychlost i body (×1, ×1, ×2, ×2, ×3 …).
+- Ovoce stárne: čím déle leží, tím míň bodů (až na třetinu).
+- Úroveň 2+: kameny · 5+: divoký had krade ovoce (obklíčíš-li ho, dostaneš bonus) · 6+: koulející se balvany · 8+: zdi se přibližují.
+- Had pluje vlněním, mlsá jazykem, když cítí jídlo, a při 25+ bodech svléká kůži.
+
 ## Online žebříček (Supabase)
 
 1. Vytvoř bezplatný projekt na [supabase.com](https://supabase.com).
