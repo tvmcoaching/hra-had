@@ -493,6 +493,7 @@
         <span>🪨 kameny</span><span>🐍 divoký had</span><span>⏳ ovoce stárne</span>
       </div>
       <div class="tip">Jez rychle za sebou → combo ×2 až ×5 · občas přijde ovocná horečka 🍉</div>
+      <div class="tip">Od 2. úrovně máš 3 životy ❤️ a okrajem projedeš na druhou stranu</div>
       <div class="tip">Každé 2 úrovně nový svět: 🌿 → 🌴 → 🏜️ → 🏙️ → ❄️ → 🌋 · od džungle v každém světě 3 poklady 💎</div>
       </div>
     </div>
@@ -1082,7 +1083,7 @@
     if (w !== world) { startTravel(w); return; }
     placeLevel();
     recomputeSpeed();
-    const sub = world.id === 'meadow' ? (level === 2 ? 'Pozor, kameny! 🪨' : null) : world.more;
+    const sub = world.id === 'meadow' ? (level === 2 ? 'Kameny 🪨 · okrajem projedeš na druhou stranu!' : null) : world.more;
     banner(`ÚROVEŇ ${level}`, ['#4ade80', '#22d3ee', '#fde047', '#f472b6', '#fb923c'][level % 5], 1.25);
     const c = cell(); floatText((view.x + VIEW / 2) * c, (view.y + VIEW / 2 + 2.2) * c, sub || `Body ×${lvlMult()} · rychleji!`, '#ffffff', 0.85);
     sfx.milestone(); launchConfetti(50); punch(true); vibrate([30, 40, 30]);
@@ -2473,7 +2474,7 @@
       // duch, kterému končí kouzlo uvnitř kamene, dostane chvilku navíc
       if (p.ghostUntil > 0 && !isGhost(p) && blocked(p.body[0].x, p.body[0].y)) p.ghostUntil = time + 0.3;
       let nx = p.body[0].x + p.dir.x, ny = p.body[0].y + p.dir.y;
-      if (isGhost(p)) { const A = N - 2 * ring; nx = ring + (((nx - ring) % A) + A) % A; ny = ring + (((ny - ring) % A) + A) % A; }
+      if (isGhost(p) || wrapOn()) { const A = N - 2 * ring; nx = ring + (((nx - ring) % A) + A) % A; ny = ring + (((ny - ring) % A) + A) % A; }
       p.tele = null;
       for (const pt of portals) {
         if (nx === pt.a.x && ny === pt.a.y) { p.tele = pt; nx = pt.b.x; ny = pt.b.y; break; }
@@ -3499,11 +3500,14 @@
     if (o.leader && p.acc === 'none') emoji(g, '👑', h.x, h.y - c * 0.75 + Math.sin(now / 200) * c * 0.05, c * 0.7);
   }
 
+  // od úrovně 2 (1 hráč) se okrajem projede na druhou stranu; láva sopky zůstává smrtelná
+  const wrapOn = () => mode === 1 && level >= 2 && ring === 0;
   function danger(p) {
     if (!p.alive || isGhost(p) || phase !== 'play') return false;
     const h = p.body[0];
     for (let k = 1; k <= 2; k++) {
-      const x = h.x + p.dir.x * k, y = h.y + p.dir.y * k;
+      let x = h.x + p.dir.x * k, y = h.y + p.dir.y * k;
+      if (wrapOn()) { x = (x + N) % N; y = (y + N) % N; }
       if (x < 0 || y < 0 || x >= N || y >= N || blocked(x, y)) return true;
       if (rival && rival.alive && rival.body.some(s => s.x === x && s.y === y)) return true;
       if (foods.some(f => f.type === 'bomb' && f.x === x && f.y === y)) return true;
@@ -4629,7 +4633,7 @@
     const p0 = players[0], p1 = players[1];
     const acc0 = SKIN[sel[0].skin].accent, acc1 = SKIN[sel[1].skin].accent;
     if (mode === 1) {
-      setText('l1', phase === 'menu' ? 'Skóre' : `Skóre · ${world.icon} úr. ${level}` + (level >= 2 ? ' · ' + '❤️'.repeat(lives) : '')); setText('v1', String(p0 ? p0.score : 0), true);
+      setText('l1', phase === 'menu' ? 'Skóre' : level >= 2 ? `${world.icon} úr. ${level} · ${'❤️'.repeat(lives)}` : `Skóre · ${world.icon} úr. ${level}`); setText('v1', String(p0 ? p0.score : 0), true);
       setText('l2', `Rekord ${{ easy: '😌', normal: '🙂', hard: '😈' }[diff]}`); setText('v2', String(best), true);
       setText('c1', chips(p0)); setText('c2', '🏆');
       $('b1').style.setProperty('--accent', acc0); $('b2').style.setProperty('--accent', '#fde047');

@@ -12,6 +12,7 @@ Stačí otevřít `index.html` v prohlížeči.
 - Tři obtížnosti (😌 Lehká, 🙂 Normální, 😈 Těžká), každá má vlastní rekord. Online žebříček je jen pro Normální.
 - Každá úroveň potřebuje víc ovoce (6, 7, 8 … max 16). S úrovní roste rychlost i body (×1, ×1, ×2, ×2, ×3 …).
 - Ovoce stárne: čím déle leží, tím míň bodů (až na třetinu).
+- Od úrovně 2 se okrajem mapy projede na druhou stranu (zdi nezabíjí; láva na sopce ano).
 - Od úrovně 2 má hráč 3 životy ❤️❤️❤️ (v HUD): po nárazu se úroveň opakuje (skóre zůstává), po třetím nárazu konec hry.
 - Po prohře jde hrát rovnou od nejdál dosaženého světa (tlačítko „▶ Hrát od: …“, skóre od nuly). První úroveň nového světa nezrychluje.
 - Každé 2 úrovně nový svět. Všechny světy mají pevnou mapu (nic se neposouvá), 20×20, džungle 24×24:
