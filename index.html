@@ -489,7 +489,7 @@
         <span>🪨 kameny</span><span>🐍 divoký had</span><span>⏳ ovoce stárne</span>
       </div>
       <div class="tip">Jez rychle za sebou → combo ×2 až ×5 · občas přijde ovocná horečka 🍉</div>
-      <div class="tip">Každé 2 úrovně nový svět: 🌿 → 🌴 → 🏜️ → 🏙️ → ❄️ → 🌋</div>
+      <div class="tip">Každé 2 úrovně nový svět: 🌿 → 🌴 → 🏜️ → 🏙️ → ❄️ → 🌋 · v každém najdi 3 poklady 💎</div>
       </div>
     </div>
 
@@ -633,6 +633,8 @@
     shrink: { pts: 1, glow: '#34d399', emoji: '🍄', life: 7 },
     mouse:  { pts: 3, glow: '#f9a8d4', emoji: '🐭', life: 12 },
     bomb:   { pts: 0, glow: '#ff2d2d', emoji: '💣', life: 12 },
+    gem:    { pts: 10, glow: '#67e8f9', emoji: '💎' },
+    fish:   { pts: 3, glow: '#38bdf8', emoji: '🐟', life: 6 },
   };
   const FRUITS = ['🍎', '🍐', '🍊', '🍇', '🍓', '🍉', '🍒', '🍌', '🥝', '🍑', '🍍'];
   const MILESTONES = [[10, 'Pěkně! 👍'], [25, 'Super! 🔥'], [50, 'Neuvěřitelné! 🤩'], [75, 'Mašina! 🚀'], [100, 'STOVKA! 💯'], [150, 'Šampion! 🏆'], [200, 'LEGENDA! 👑'], [300, 'Bůh hadů! 🐍']];
@@ -1051,7 +1053,7 @@
       const key = x * N + y;
       if (rocks.has(key) || terrain.has(key) || x < ring || y < ring || x >= N - ring || y >= N - ring) continue;
       if (players.some(p => p.body.some(b => b.x === x && b.y === y)) || (rival && rival.body.some(b => b.x === x && b.y === y))) continue;
-      if (nearHead(x, y, 4)) continue;
+      if (nearHead(x, y, 4) || foods.some(f => f.type === 'gem' && f.x === x && f.y === y)) continue;
       foods = foods.filter(f => { if (f.x === x && f.y === y) { if (f.type === 'apple' && !f.extra) setTimeout(() => phase === 'play' && spawn('apple'), 0); return false; } return true; });
       portals = portals.filter(pt => !((pt.a.x === x && pt.a.y === y) || (pt.b.x === x && pt.b.y === y)));
       rocks.set(key, { x, y, bornAt: now + delay, v: (x * 7 + y * 3) % 3, kind });
@@ -1139,7 +1141,7 @@
   // Každé 2 úrovně nový svět. Velké světy se posouvají – kamera jede za hadem.
   const WORLDS = [
     { id: 'meadow',  name: 'Louka',   icon: '🌿', size: 20, from: 1,  fill: 'rock',     tip: '' },
-    { id: 'jungle',  name: 'Džungle', icon: '🌴', size: 30, from: 3,  fill: 'tree',     tip: 'Pozor na padající kokosy! Řeka zpomaluje.', more: 'Kokosy padají častěji! 🥥' },
+    { id: 'jungle',  name: 'Džungle', icon: '🌴', size: 30, from: 3,  fill: 'tree',     tip: 'Opice hází kokosy! 🐒 Z řeky vyskakují ryby 🐟', more: 'Opice zlobí víc! 🥥' },
     { id: 'desert',  name: 'Poušť',   icon: '🏜️', size: 34, from: 5,  fill: 'mesa',     tip: 'Kaktusy píchají, písek zpomalí a číhá tu divoký had! 🐍', more: 'Víc převalovníků! 🌾' },
     { id: 'city',    name: 'Město',   icon: '🏙️', size: 36, from: 7,  fill: 'building', tip: 'Pozor na auta! Na silnici se rozhlížej. 🚗', more: 'Hustší provoz! 🚗' },
     { id: 'ice',     name: 'Ledové království', icon: '❄️', size: 38, from: 9, fill: 'iceblock', tip: 'Na ledu to klouže – zatáčej dřív! ⛄', more: 'Víc sněhových koulí! ⛄' },
@@ -1156,7 +1158,7 @@
   let world = WORLDS[0];
   let terrain = new Map(), ground = new Uint8Array(N * N), drops = [], lavaCells = [], waterCells = [], craters = [];
   let hz = { next: 0, stormUntil: 0, stormNext: 0, wind: { x: 1, y: 0 }, eruptAt: 0 };
-  let travel = null, amb = [], visR = { x0: 0, y0: 0, x1: N, y1: N };
+  let travel = null, amb = [], visR = { x0: 0, y0: 0, x1: N, y1: N }, gems = { found: 0, total: 0 }, flyer = null;
   const view = { x: 0, y: 0, t: 0, snap: true };   // levý horní roh výřezu (v políčkách)
   const groundAt = (x, y) => x >= 0 && y >= 0 && x < N && y < N ? ground[x * N + y] : 0;
   const laneDirs = (x, y) => {   // jednosměrné pruhy: na každé silnici jede každý pruh jedním směrem
@@ -1219,7 +1221,7 @@
         const cx = rv + Math.round(Math.sin(y * 0.22 + ph) * 2.5);
         for (let k = 0; k < 2; k++) G(cx + k, y, bridges.has(y) ? G_BRIDGE : G_WATER, true);
       }
-      for (let k = 0; k < cnt(28); k++) blob(rx(), rx(), 2 + Math.floor(R() * 5), (x, y) => T(x, y, R() < 0.55 ? 'tree' : 'palm'));
+      for (let k = 0; k < cnt(36); k++) blob(rx(), rx(), 2 + Math.floor(R() * 5), (x, y) => T(x, y, R() < 0.55 ? 'tree' : 'palm'));
     } else if (w.id === 'desert') {
       // oáza
       const ox = 4 + Math.floor(R() * (N - 8)), oy = 4 + Math.floor(R() * (N - 8));
@@ -1301,9 +1303,34 @@
     if (w.id !== 'meadow') genWorld(w, rng((Math.random() * 1e9) | 0));
     for (const t of terrain.values()) if (t.kind === 'lava') lavaCells.push(t);
     for (let x = 0; x < N; x++) for (let y = 0; y < N; y++) if (ground[x * N + y] === G_WATER) waterCells.push({ x, y });
-    view.snap = true;
+    placeGems();
+    view.snap = true; flyer = null;
     amb = [];
     renderBackground();
+  }
+  // v každém velkém světě jsou schované 3 poklady
+  function placeGems() {
+    gems = { found: 0, total: 0 };
+    if (N <= VIEW || world.id === 'meadow') return;
+    const s0 = startSpots()[0], m = world.id === 'volcano' ? 15 : 3, got = [];
+    const ok = (x, y) => x >= m && y >= m && x < N - m && y < N - m && !terrain.has(x * N + y) && ![G_WATER, G_BRIDGE, G_ROAD].includes(ground[x * N + y]);
+    for (let t = 0; got.length < 3 && t < 3000; t++) {
+      const x = Math.floor(Math.random() * N), y = Math.floor(Math.random() * N);
+      if (!ok(x, y) || Math.abs(x - s0.x) + Math.abs(y - s0.y) < 10) continue;
+      if (got.some(o => Math.abs(o.x - x) + Math.abs(o.y - y) < N * (t < 2000 ? 0.4 : 0.2))) continue;
+      got.push({ x, y });
+    }
+    const now = performance.now();
+    for (const { x, y } of got) foods.push({ x, y, type: 'gem', born: time, bornAt: now, expires: Infinity, life: 0, emoji: '💎', phase: Math.random() * 6, face: 1, extra: true });
+    gems.total = got.length;
+  }
+  function nearestTree(t, d) {
+    let best = null, bd = 99;
+    for (let x = t.x - d; x <= t.x + d; x++) for (let y = t.y - d; y <= t.y + d; y++) {
+      const o = terrain.get(x * N + y), dd = Math.abs(x - t.x) + Math.abs(y - t.y);
+      if (o && (o.kind === 'tree' || o.kind === 'palm') && dd < bd && dd > 0) { bd = dd; best = { x: x + 0.5, y: y + 0.5 }; }
+    }
+    return best;
   }
   function placePlayers() {
     const sp = startSpots();
@@ -1379,7 +1406,7 @@
       return;
     }
     b.wait = 0;
-    const f = foods.find(f => f.x === nx && f.y === ny);
+    const f = foods.find(f => f.x === nx && f.y === ny && f.type !== 'gem');
     if (f) {   // auto přejede ovoce
       foods = foods.filter(o => o !== f);
       const cc = center(f); burst(cc.x, cc.y, FOOD[f.type].glow, 10);
@@ -1413,7 +1440,7 @@
       if (lava) emojiBurst(cc.x, cc.y, ['🔥'], 2);
       onScreen(d.x, d.y) && (lava ? sfx.boom() : sfx.thud());
       if (onSnake || terrain.has(key) || rocks.has(key)) continue;   // rozbije se o hada
-      const f = foods.find(f => f.x === d.x && f.y === d.y);
+      const f = foods.find(f => f.x === d.x && f.y === d.y && f.type !== 'gem');
       if (f) { foods = foods.filter(o => o !== f); if (f.type === 'apple' && !f.extra) spawn('apple'); }
       rocks.set(key, { x: d.x, y: d.y, bornAt: now, v: 0, kind: lava ? 'lavapool' : 'coconut', until: time + (lava ? 6 : 8) });
     }
@@ -1441,7 +1468,25 @@
       if (time >= hz.next) {
         hz.next = time + (sub ? 2.3 : 3.6) * hk * (0.8 + Math.random() * 0.4);
         const t = dropTarget(h, 2, 7);
-        if (t) { drops.push({ kind: 'coconut', x: t.x, y: t.y, landAt: time + 1.7, warn: 1.7 }); sfx.whistle(); }
+        if (t) { drops.push({ kind: 'coconut', x: t.x, y: t.y, landAt: time + 1.7, warn: 1.7, tree: nearestTree(t, 4) }); sfx.whistle(); }
+      }
+      // z řeky občas vyskočí ryba na břeh – dá se sníst
+      if (!hz.fishNext) hz.fishNext = time + 7;
+      if (time >= hz.fishNext && !foods.some(f => f.type === 'fish')) {
+        hz.fishNext = time + 8 + Math.random() * 6;
+        const near = waterCells.filter(w => { const d = Math.abs(w.x - h.x) + Math.abs(w.y - h.y); return d >= 3 && d <= 10; });
+        for (let t = 0; t < 40 && near.length; t++) {
+          const w = pick(near), d = pick(DIR4), x = w.x + d.x, y = w.y + d.y, gg = groundAt(x, y);
+          if (x < 0 || y < 0 || x >= N || y >= N || gg === G_WATER || gg === G_BRIDGE || occupied(x, y) || drops.some(o => o.x === x && o.y === y)) continue;
+          const now = performance.now();
+          foods.push({ x, y, fx: w.x, fy: w.y, movedAt: now, dur: 450, type: 'fish', born: time, bornAt: now, expires: time + 6, life: 6, emoji: '🐟', phase: Math.random() * 6, face: d.x || 1, extra: true });
+          if (onScreen(w.x, w.y)) {
+            sfx.splash();
+            const cc = center(w), c = cell();
+            for (let k = 0; k < 10; k++) particles.push({ x: cc.x, y: cc.y, vx: (Math.random() - .5) * c * 4, vy: -Math.random() * c * 5, g: c * 12, life: 0.8, decay: 1.6, r: c * 0.08, color: pick(['#7dd3fc', '#e0f2fe', '#38bdf8']) });
+          }
+          break;
+        }
       }
     } else if (world.id === 'desert') {
       if (!hz.stormNext) hz.stormNext = time + 16;
@@ -1561,7 +1606,7 @@
   // ---------- malování světa do pozadí (kreslený styl) ----------
   const PAL = {   // šachovnice světlá / tmavší, nádech světla
     meadow:  ['#a8db6c', '#9cd260', 'rgba(255,255,210,0.14)'],
-    jungle:  ['#62b04c', '#58a644', 'rgba(255,255,190,0.10)'],
+    jungle:  ['#5cae44', '#52a33c', 'rgba(255,255,190,0.10)'],
     desert:  ['#f3d28c', '#ecc77c', 'rgba(255,255,255,0.12)'],
     city:    ['#cdd2db', '#c5cad4', 'rgba(255,255,255,0.08)'],
     ice:     ['#eef7fc', '#e1eef7', 'rgba(255,255,255,0.15)'],
@@ -1586,6 +1631,27 @@
   function paintTuft(g, x, y, c, col) {
     g.strokeStyle = col; g.lineWidth = c * 0.05; g.lineCap = 'round';
     for (const [dx, h] of [[-0.09, 0.18], [0, 0.26], [0.09, 0.18]]) { g.beginPath(); g.moveTo(x + dx * c * 0.4, y); g.quadraticCurveTo(x + dx * c, y - h * c * 0.5, x + dx * c * 1.6, y - h * c); g.stroke(); }
+  }
+  function paintFern(g, x, y, c, s) {
+    const n = 5 + Math.floor(s * 3), L = [];
+    for (let k = 0; k < n; k++) { const a = -Math.PI / 2 + (k - (n - 1) / 2) * 0.45, l = c * (0.24 + 0.1 * hash(k, s * 9)); L.push([x + Math.cos(a) * l * 0.55, y + c * 0.12 + Math.sin(a) * l * 0.55, l * 0.55, a]); }
+    g.fillStyle = OUT; for (const [lx, ly, r, a] of L) { ell(g, lx, ly, r + c * 0.022, c * 0.085, a); g.fill(); }
+    L.forEach(([lx, ly, r, a], k) => { g.fillStyle = k % 2 ? '#3c9a36' : '#4cb446'; ell(g, lx, ly, r, c * 0.062, a); g.fill(); });
+    g.strokeStyle = '#2b6e27'; g.lineWidth = c * 0.018;
+    for (const [lx, ly, r, a] of L) { g.beginPath(); g.moveTo(lx - Math.cos(a) * r * 0.85, ly - Math.sin(a) * r * 0.85); g.lineTo(lx + Math.cos(a) * r * 0.85, ly + Math.sin(a) * r * 0.85); g.stroke(); }
+  }
+  function paintMushroom(g, x, y, c, col = '#e53935') {
+    g.fillStyle = OUT; rrect(g, x - c * 0.06, y - c * 0.02, c * 0.12, c * 0.16, c * 0.04); g.fill();
+    g.fillStyle = '#fff3e0'; rrect(g, x - c * 0.04, y, c * 0.08, c * 0.12, c * 0.03); g.fill();
+    g.fillStyle = OUT; g.beginPath(); g.ellipse(x, y + c * 0.01, c * 0.15, c * 0.13, 0, Math.PI, 0); g.closePath(); g.fill();
+    g.fillStyle = col; g.beginPath(); g.ellipse(x, y, c * 0.12, c * 0.1, 0, Math.PI, 0); g.closePath(); g.fill();
+    g.fillStyle = '#ffffff'; circle(g, x - c * 0.05, y - c * 0.05, c * 0.022); g.fill(); circle(g, x + c * 0.04, y - c * 0.07, c * 0.018); g.fill();
+  }
+  function paintLily(g, x, y, r, a, flower) {
+    g.fillStyle = OUT; g.beginPath(); g.moveTo(x, y); g.arc(x, y, r + r * 0.12, a + 0.35, a + TAU - 0.35); g.closePath(); g.fill();
+    g.fillStyle = '#5cbf4a'; g.beginPath(); g.moveTo(x, y); g.arc(x, y, r, a + 0.35, a + TAU - 0.35); g.closePath(); g.fill();
+    g.fillStyle = '#7fd36a'; circle(g, x - r * 0.2, y - r * 0.2, r * 0.45); g.fill();
+    if (flower) paintFlower(g, x + r * 0.1, y + r * 0.05, r * 0.28, '#f9a8d4');
   }
   function paintTree(g, cx, cy, c, v, base, light) {
     blobShadow(g, cx, cy, c, 0.5, 0.36);
@@ -1676,7 +1742,8 @@
         const wet = (a, b) => gAt(a, b) === G_WATER || gAt(a, b) === G_BRIDGE;
         edge(x, y, px, py, wet, '#2b8fc4', c * 0.08);
         edge(x, y, px, py, wet, 'rgba(235,250,255,0.95)', c * 0.1, c * 0.1);
-        if (gr === G_WATER && R() < 0.45) {
+        if (gr === G_WATER && id === 'jungle' && R() < 0.2) paintLily(g, px + c * (0.3 + R() * 0.4), py + c * (0.3 + R() * 0.4), c * 0.22, R() * TAU, R() < 0.35);
+        else if (gr === G_WATER && R() < 0.45) {
           g.strokeStyle = 'rgba(255,255,255,0.7)'; g.lineWidth = c * 0.05; g.lineCap = 'round';
           const wx = px + c * (0.25 + R() * 0.4), wy = py + c * (0.3 + R() * 0.4);
           g.beginPath(); g.moveTo(wx - c * 0.14, wy); g.quadraticCurveTo(wx - c * 0.07, wy - c * 0.08, wx, wy); g.quadraticCurveTo(wx + c * 0.07, wy + c * 0.08, wx + c * 0.14, wy); g.stroke();
@@ -1725,9 +1792,12 @@
         else if (r < 0.2) paintFlower(g, cx, cy, c * 0.06, ['#ffffff', '#f9a8d4', '#fde047', '#c4b5fd', '#fca5a5'][Math.floor(R() * 5)]);
         else if (r < 0.215) { g.fillStyle = OUT; ell(g, cx, cy, c * 0.1, c * 0.075); g.fill(); g.fillStyle = '#c9ced6'; ell(g, cx, cy - c * 0.01, c * 0.075, c * 0.055); g.fill(); }
       } else if (id === 'jungle') {
-        if (r < 0.18) paintTuft(g, cx, cy, c, '#3f8a35');
-        else if (r < 0.26) { g.fillStyle = '#4a9a3c'; for (let k = 0; k < 5; k++) { const a = -Math.PI / 2 + (k - 2) * 0.5; ell(g, cx + Math.cos(a) * c * 0.14, cy + Math.sin(a) * c * 0.14, c * 0.14, c * 0.05, a); g.fill(); } }
-        else if (r < 0.29) paintFlower(g, cx, cy, c * 0.07, '#ef4444');
+        if (r < 0.16) paintTuft(g, cx, cy, c, '#2f7a2a');
+        else if (r < 0.28) paintFern(g, cx, cy, c, R());
+        else if (r < 0.33) paintFlower(g, cx, cy, c * 0.085, ['#ff4d6d', '#ff8c42', '#f72585', '#ffd23f', '#ffffff'][Math.floor(R() * 5)]);
+        else if (r < 0.35) paintMushroom(g, cx, cy, c, R() < 0.7 ? '#e53935' : '#f59e0b');
+        else if (r < 0.39) { for (let k = 0; k < 3; k++) { g.fillStyle = ['#c58a2e', '#9c6b2a', '#d9a441'][k]; ell(g, cx + (R() - .5) * c * 0.4, cy + (R() - .5) * c * 0.3, c * 0.09, c * 0.045, R() * 3); g.fill(); } }
+        else if (r < 0.405) { g.fillStyle = OUT; ell(g, cx, cy, c * 0.4, c * 0.24); g.fill(); g.fillStyle = '#7a5232'; ell(g, cx, cy, c * 0.36, c * 0.2); g.fill(); g.fillStyle = '#946640'; ell(g, cx - c * 0.06, cy - c * 0.04, c * 0.2, c * 0.09); g.fill(); g.fillStyle = 'rgba(255,255,255,0.5)'; ell(g, cx - c * 0.14, cy - c * 0.06, c * 0.06, c * 0.025); g.fill(); }
       } else if (id === 'desert') {
         if (r < 0.22) { g.strokeStyle = '#ddb46a'; g.lineWidth = c * 0.05; g.lineCap = 'round'; g.beginPath(); g.arc(cx, cy + c * 0.3, c * 0.32, Math.PI * 1.18, Math.PI * 1.82); g.stroke(); }
         else if (r < 0.28) { g.fillStyle = OUT; ell(g, cx, cy, c * 0.085, c * 0.065); g.fill(); g.fillStyle = '#c9955a'; ell(g, cx, cy - c * 0.01, c * 0.065, c * 0.045); g.fill(); }
@@ -1787,7 +1857,13 @@
     for (const t of terrain.values()) {
       const cx = (t.x + 0.5) * c, cy = (t.y + 0.5) * c, px = t.x * c, py = t.y * c;
       switch (t.kind) {
-        case 'tree': paintTree(g, cx, cy, c, t.v, id === 'jungle' ? '#2f8a35' : '#3e9b3a', id === 'jungle' ? '#48ad45' : '#62c450'); break;
+        case 'tree':
+          if (id === 'jungle') {
+            paintTree(g, cx, cy, c * 1.14, t.v, ['#2a7f31', '#2f8a35', '#317a3a'][t.v % 3], ['#45a842', '#4fb54a', '#56a84a'][t.v % 3]);
+            const fc = ['#ff8c42', '#ff4d6d', '#ffd23f', '#c084fc'][t.v];
+            for (let k = 0; k < 3; k++) { const fx2 = cx + (hash(t.x, k) - 0.5) * c * 0.7, fy2 = cy + (hash(k, t.y) - 0.5) * c * 0.7; g.fillStyle = OUT; circle(g, fx2, fy2, c * 0.075); g.fill(); g.fillStyle = fc; circle(g, fx2, fy2, c * 0.055); g.fill(); g.fillStyle = 'rgba(255,255,255,0.6)'; circle(g, fx2 - c * 0.018, fy2 - c * 0.018, c * 0.018); g.fill(); }
+          } else paintTree(g, cx, cy, c, t.v, '#3e9b3a', '#62c450');
+          break;
         case 'palm': paintPalm(g, cx, cy, c, t.v); break;
         case 'pine': paintPine(g, cx, cy, c, t.v); break;
         case 'cactus': paintCactus(g, cx, cy, c, t.v); break;
@@ -1803,6 +1879,25 @@
           g.fillStyle = '#fff1a8'; ell(g, cx + (t.v - 1.5) * c * 0.1 - c * 0.05, cy - c * 0.04, c * 0.09, c * 0.05, t.v); g.fill();
           g.fillStyle = 'rgba(70,25,10,0.55)'; ell(g, px + hash(t.y, t.x) * c, py + hash(t.x + 1, t.y) * c, c * 0.12, c * 0.08, 1); g.fill();
           break;
+        }
+      }
+    }
+    // liány mezi stromy v džungli
+    if (id === 'jungle') {
+      const treeAt = (x, y) => { const o = inside(x, y) && terrain.get(x * N + y); return !!o && (o.kind === 'tree' || o.kind === 'palm'); };
+      for (const t of terrain.values()) {
+        if (t.kind !== 'tree' && t.kind !== 'palm') continue;
+        for (const [dx, dy] of [[1, 0], [0, 1]]) {
+          if (!treeAt(t.x + dx, t.y + dy) || hash(t.x * 3 + dx, t.y * 5 + dy) > 0.45) continue;
+          const x1 = (t.x + 0.5) * c, y1 = (t.y + 0.4) * c, x2 = x1 + dx * c, y2 = y1 + dy * c;
+          const mx = (x1 + x2) / 2 + dy * c * 0.35, my = (y1 + y2) / 2 + dx * c * 0.35;
+          for (const [col, w] of [[OUT, c * 0.1], ['#7c9a2e', c * 0.055]]) { g.strokeStyle = col; g.lineWidth = w; g.lineCap = 'round'; g.beginPath(); g.moveTo(x1, y1); g.quadraticCurveTo(mx, my, x2, y2); g.stroke(); }
+          for (const q of [0.3, 0.7]) {
+            const lx = (1 - q) * (1 - q) * x1 + 2 * q * (1 - q) * mx + q * q * x2, ly = (1 - q) * (1 - q) * y1 + 2 * q * (1 - q) * my + q * q * y2;
+            g.fillStyle = OUT; ell(g, lx + c * 0.05, ly + c * 0.05, c * 0.1, c * 0.06, 0.7); g.fill();
+            g.fillStyle = '#5cbf4a'; ell(g, lx + c * 0.05, ly + c * 0.05, c * 0.08, c * 0.042, 0.7); g.fill();
+          }
+          if (hash(t.y, t.x) < 0.5) paintFlower(g, mx, my - (dx ? c * 0.12 : 0), c * 0.06, '#ff4d6d');
         }
       }
     }
@@ -1870,7 +1965,16 @@
     ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = Math.max(1, c * 0.05);
     ctx.strokeRect(x0 + view.x * k, y0 + view.y * k, VIEW * k, VIEW * k);
     const dot = Math.max(2, k * 1.4);
-    for (const f of foods) { if (f.type === 'bomb') continue; ctx.fillStyle = FOOD[f.type].glow; ctx.fillRect(x0 + f.x * k - dot / 2, y0 + f.y * k - dot / 2, dot, dot); }
+    for (const f of foods) {
+      if (f.type === 'bomb') continue;
+      if (f.type === 'gem') {
+        const gx = x0 + (f.x + 0.5) * k, gy = y0 + (f.y + 0.5) * k, r = dot * (1.3 + 0.4 * Math.sin(now / 200 + f.phase));
+        ctx.fillStyle = '#67e8f9'; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = Math.max(1, dot * 0.3);
+        ctx.beginPath(); ctx.moveTo(gx, gy - r); ctx.lineTo(gx + r * 0.75, gy); ctx.lineTo(gx, gy + r); ctx.lineTo(gx - r * 0.75, gy); ctx.closePath(); ctx.fill(); ctx.stroke();
+        continue;
+      }
+      ctx.fillStyle = FOOD[f.type].glow; ctx.fillRect(x0 + f.x * k - dot / 2, y0 + f.y * k - dot / 2, dot, dot);
+    }
     if (rival && rival.alive) { ctx.fillStyle = '#a3e635'; ctx.fillRect(x0 + rival.body[0].x * k - dot / 2, y0 + rival.body[0].y * k - dot / 2, dot, dot); }
     ctx.fillStyle = '#ffffff'; circle(ctx, x0 + (h.x + 0.5) * k, y0 + (h.y + 0.5) * k, dot * (0.9 + 0.25 * Math.sin(now / 150))); ctx.fill();
     ctx.strokeStyle = OUT; ctx.lineWidth = Math.max(1, dot * 0.35); ctx.stroke();
@@ -1879,7 +1983,7 @@
   function drawOffscreen(W, c, now) {
     if (N <= VIEW || !players[0] || (phase !== 'play' && phase !== 'countdown')) return;
     const h = players[0].body[0], m = c * 0.65, half = W / 2;
-    const list = foods.filter(f => f.type !== 'bomb')
+    const list = foods.filter(f => f.type !== 'bomb' && f.type !== 'gem')
       .map(f => ({ f, sx: (f.x + 0.5 - view.x) * c, sy: (f.y + 0.5 - view.y) * c, d: Math.abs(f.x - h.x) + Math.abs(f.y - h.y) }))
       .filter(o => o.sx < 0 || o.sy < 0 || o.sx > W || o.sy > W)
       .sort((a, b) => a.d - b.d).slice(0, 3);
@@ -1920,6 +2024,116 @@
       ctx.fillStyle = '#e2e8f0'; ctx.fillText(w.tip, W / 2, W * 0.74);
     }
     ctx.restore();
+  }
+
+  // ---------- popředí obrazovky: listí džungle, paprsky, rampouchy ----------
+  const frontCache = {};
+  function frontSprite(id, W, c) {
+    const key = id + ':' + W;
+    if (key in frontCache) return frontCache[key];
+    const cv = document.createElement('canvas'); cv.width = cv.height = W;
+    const g = cv.getContext('2d'), R = rng(W + id.length * 31);
+    if (id === 'jungle') {
+      // paprsky slunce prosvítající korunami
+      for (let k = 0; k < 4; k++) {
+        const x = W * (0.08 + k * 0.26 + R() * 0.08), w = c * (1.2 + R() * 1.4);
+        const gr = g.createLinearGradient(x, 0, x + W * 0.35, W);
+        gr.addColorStop(0, 'rgba(255,250,200,0.16)'); gr.addColorStop(1, 'rgba(255,250,200,0)');
+        g.fillStyle = gr; g.beginPath(); g.moveTo(x, 0); g.lineTo(x + w, 0); g.lineTo(x + w + W * 0.35, W); g.lineTo(x + W * 0.35, W); g.closePath(); g.fill();
+      }
+      const leaf = (x, y, L, a, col) => {
+        g.save(); g.translate(x, y); g.rotate(a);
+        g.fillStyle = OUT; ell(g, L * 0.5, 0, L * 0.52 + c * 0.04, L * 0.2 + c * 0.04); g.fill();
+        const gr = g.createLinearGradient(0, -L * 0.2, 0, L * 0.2); gr.addColorStop(0, shade(col, 0.2)); gr.addColorStop(1, shade(col, -0.25));
+        g.fillStyle = gr; ell(g, L * 0.5, 0, L * 0.52, L * 0.2); g.fill();
+        g.strokeStyle = shade(col, -0.4); g.lineWidth = c * 0.05; g.beginPath(); g.moveTo(c * 0.05, 0); g.lineTo(L * 0.95, 0); g.stroke();
+        g.lineWidth = c * 0.025; for (let k = 1; k < 5; k++) { const lx = L * k / 5.5; g.beginPath(); g.moveTo(lx, 0); g.lineTo(lx + L * 0.1, -L * 0.13); g.moveTo(lx, 0); g.lineTo(lx + L * 0.1, L * 0.13); g.stroke(); }
+        g.restore();
+      };
+      const cols = ['#2e8b3a', '#3a9d3f', '#25753a', '#43a83f'];
+      const cluster = (x, y, n, base, spread, size) => { for (let k = 0; k < n; k++) leaf(x + (R() - .5) * c * 0.6, y + (R() - .5) * c * 0.6, c * size * (0.8 + R() * 0.5), base + (R() - .5) * spread, cols[Math.floor(R() * 4)]); };
+      // liány shora
+      for (let k = 0; k < 4; k++) {
+        const x = W * (0.12 + k * 0.17 + R() * 0.06), L = c * (1.2 + R() * 1.8);
+        for (const [col, w] of [[OUT, c * 0.13], ['#6b8e23', c * 0.07]]) { g.strokeStyle = col; g.lineWidth = w; g.lineCap = 'round'; g.beginPath(); g.moveTo(x, -c); g.quadraticCurveTo(x + c * 0.4, L * 0.5, x + c * 0.1, L); g.stroke(); }
+        for (let j = 1; j <= 3; j++) leaf(x + c * 0.15, L * j / 3.2, c * 0.55, j % 2 ? 0.6 : 2.5, cols[j % 4]);
+      }
+      cluster(0, 0, 9, 0.75, 1.2, 1.9);              // levý horní roh
+      cluster(0, W, 8, -0.7, 1.2, 1.8);              // levý dolní roh
+      cluster(W, W, 8, -2.4, 1.2, 1.8);              // pravý dolní roh
+      for (let k = 0; k < 3; k++) cluster(W * (0.3 + k * 0.17), -c * 0.1, 3, Math.PI / 2 + (R() - .5), 0.8, 1.1);   // horní okraj
+      cluster(-c * 0.1, W * 0.5, 3, 0.1, 0.8, 1.2);  // levý okraj
+      cluster(W + c * 0.1, W * 0.62, 3, Math.PI, 0.8, 1.2);
+    } else if (id === 'ice') {
+      // rampouchy nahoře a jinovatka v rozích
+      for (const [x, y] of [[0, 0], [0, W], [W, W], [W, 0]]) {
+        const gr = g.createRadialGradient(x, y, 0, x, y, W * 0.32);
+        gr.addColorStop(0, 'rgba(255,255,255,0.55)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+        g.fillStyle = gr; g.fillRect(0, 0, W, W);
+      }
+      g.fillStyle = '#ffffff'; g.fillRect(0, 0, W, c * 0.18);
+      for (let x = c * 0.2; x < W * 0.74; x += c * (0.45 + R() * 0.5)) {
+        const L = c * (0.35 + R() * 0.9), w = c * (0.14 + R() * 0.12);
+        g.beginPath(); g.moveTo(x - w, c * 0.1); g.lineTo(x + w, c * 0.1); g.lineTo(x, c * 0.1 + L); g.closePath();
+        g.fillStyle = 'rgba(200,236,255,0.95)'; g.fill(); g.strokeStyle = 'rgba(90,160,210,0.8)'; g.lineWidth = c * 0.04; g.stroke();
+        g.fillStyle = 'rgba(255,255,255,0.9)'; g.beginPath(); g.moveTo(x - w * 0.6, c * 0.12); g.lineTo(x - w * 0.15, c * 0.12); g.lineTo(x - w * 0.1, c * 0.1 + L * 0.6); g.closePath(); g.fill();
+      }
+    }
+    return (frontCache[key] = cv);
+  }
+  function drawFront(W, c, now) {
+    if (world.id !== 'jungle' && world.id !== 'ice') return;
+    const sp = frontSprite(world.id, W, c);
+    ctx.save();
+    if (world.id === 'jungle') { ctx.translate(W / 2, -c); ctx.rotate(Math.sin(now / 1700) * 0.008); ctx.translate(-W / 2, c); }
+    ctx.drawImage(sp, 0, 0);
+    ctx.restore();
+  }
+  // jeden měkký stín mraku (rozmazaný přes shadowBlur, ať nejsou vidět okraje)
+  const cloudCache = {};
+  function cloudSprite(c) {
+    const key = Math.round(c);
+    if (cloudCache[key]) return cloudCache[key];
+    const cv = document.createElement('canvas'); cv.width = Math.ceil(c * 12); cv.height = Math.ceil(c * 8);
+    const g = cv.getContext('2d'), off = cv.width * 2, mx = cv.width / 2, my = cv.height / 2;
+    g.shadowColor = 'rgba(20,30,70,0.5)'; g.shadowBlur = c * 1.6; g.shadowOffsetX = off;
+    g.fillStyle = '#000';
+    g.beginPath();
+    for (const [dx, dy, r] of [[0, 0, 2.4], [2, 0.5, 1.9], [-2, 0.6, 1.8], [0.4, 1.2, 1.9]]) { g.moveTo(mx + dx * c - off + r * c * 1.1, my + dy * c); g.ellipse(mx + dx * c - off, my + dy * c, r * c * 1.1, r * c * 0.72, 0, 0, TAU); }
+    g.fill();
+    return (cloudCache[key] = cv);
+  }
+  // stíny mraků, papoušci, supi
+  function drawSky(W, c, now) {
+    const id = world.id, T = now / 1000;
+    if (quality > 0 && id !== 'volcano' && id !== 'ice') {
+      const a = id === 'jungle' ? 0.1 : 0.14, span = W + c * 16;
+      for (let k = 0; k < 3; k++) {
+        const wx = ((T * c * 0.45 + k * span / 3 - view.x * c) % span + span) % span - c * 8;
+        const wy = ((W * (0.15 + k * 0.33) - view.y * c * 0.9) % W + W) % W;
+        const sp = cloudSprite(c);
+        ctx.globalAlpha = a / 0.5; ctx.drawImage(sp, wx - sp.width / 2, wy - sp.height / 2); ctx.globalAlpha = 1;
+      }
+    }
+    if (id === 'jungle' || id === 'desert' || id === 'meadow') {
+      if (!flyer || flyer.t > 1) {
+        if (!flyer) flyer = { t: 2, wait: T + 3 };
+        if (T > flyer.wait) {
+          const dir = Math.random() < 0.5 ? 1 : -1;
+          flyer = { t: 0, dir, y: W * (0.2 + Math.random() * 0.55), dur: 5 + Math.random() * 2, start: T, kind: id === 'desert' ? '🦅' : id === 'jungle' ? '🦜' : '🐦', wait: 0 };
+        }
+      }
+      if (flyer && flyer.t <= 1) {
+        flyer.t = (T - flyer.start) / flyer.dur;
+        if (flyer.t > 1) { flyer.wait = T + 6 + Math.random() * 8; return; }
+        const x = flyer.dir > 0 ? -c * 2 + (W + c * 4) * flyer.t : W + c * 2 - (W + c * 4) * flyer.t;
+        const y = flyer.y + Math.sin(flyer.t * 9) * c * 0.6, flap = Math.sin(T * 14);
+        ctx.fillStyle = 'rgba(10,20,40,0.18)'; ctx.beginPath(); ctx.ellipse(x + c * 1.4, y + c * 2.2, c * 0.55 * (0.7 + 0.3 * Math.abs(flap)), c * 0.18, 0, 0, TAU); ctx.fill();
+        ctx.save(); ctx.translate(x, y); ctx.scale(-flyer.dir, 1 + flap * 0.12);
+        emoji(ctx, flyer.kind, 0, 0, c * (flyer.kind === '🦅' ? 1.3 : 1.05));
+        ctx.restore();
+      }
+    }
   }
 
   // ---------- kreslení věcí, které se hýbou (v souřadnicích světa) ----------
@@ -1970,6 +2184,12 @@
         gl.addColorStop(0, '#fef08a'); gl.addColorStop(0.4, '#f97316'); gl.addColorStop(1, 'rgba(239,68,68,0)');
         ctx.fillStyle = gl; circle(ctx, px, py, c * 0.5); ctx.fill();
         if (Math.random() < 0.5) particles.push({ x: px, y: py, vx: 0, vy: 0, life: 0.5, decay: 2, r: c * 0.1, color: pick(['#f97316', '#fde047']) });
+      } else if (d.tree) {   // opice na stromě hodí kokos
+        const fx = d.tree.x * c, fy = d.tree.y * c, hop = Math.abs(Math.sin(now / 110)) * c * 0.15;
+        const th = clamp01((k - 0.45) / 0.55), mk = k < 0.45 ? clamp01(k / 0.12) : clamp01(1 - (k - 0.6) / 0.3);
+        if (mk > 0) emoji(ctx, '🐒', fx, fy - c * 0.35 - hop, c * 1.2 * mk, Math.sin(now / 140) * 0.2);
+        if (th <= 0) emoji(ctx, '🥥', fx + c * 0.32, fy - c * 0.62 - hop, c * 0.5);
+        else emoji(ctx, '🥥', fx + (x - fx) * th, fy + (y - fy) * th - Math.sin(th * Math.PI) * c * 2.4, c * 0.75, now / 110);
       } else if (k > 0.5) {
         const hgt = (1 - k) / 0.5 * c * 6;
         emoji(ctx, '🥥', x, y - hgt, c * 0.75, now / 150);
@@ -2065,7 +2285,7 @@
     r.trapped = !mv;
     if (mv) r.dir = mv;
     r.next = { x: h.x + r.dir.x, y: h.y + r.dir.y };
-    r.food = foods.find(f => f.x === r.next.x && f.y === r.next.y && f.type !== 'bomb') || null;
+    r.food = foods.find(f => f.x === r.next.x && f.y === r.next.y && f.type !== 'bomb' && f.type !== 'gem') || null;
     r.newBody = [r.next, ...r.body];
     if (!r.food || r.body.length >= 9) r.newBody.pop();
   }
@@ -2419,6 +2639,18 @@
         floatText(pos.x, pos.y + c, cut > 0 ? `Zmenšení! −${cut}` : 'Zmenšení!', def.glow, 0.8); vibrate([20, 30, 20]);
         break;
       }
+      case 'gem': {
+        gems.found++;
+        sfx.gold(); setTimeout(() => sfx.milestone(), 260);
+        emojiBurst(pos.x, pos.y, ['💎', '✨'], 10); vibrate([20, 30, 20, 30, 40]); flash('103,232,249', 0.2);
+        if (gems.found >= gems.total) {
+          const bonus = 25 * lvlMult();
+          p.score += bonus;
+          banner(`💎 VŠECHNY POKLADY! +${bonus}`, '#67e8f9', 0.95); launchConfetti(140);
+        } else banner(`💎 POKLAD ${gems.found}/${gems.total}`, '#67e8f9', 1.1);
+        break;
+      }
+      case 'fish':   sfx.splash(); sfx.eat(p.combo); emojiBurst(pos.x, pos.y, ['💦', '🐟'], 6); floatText(pos.x, pos.y + c, 'Ryba!', '#7dd3fc', 0.7); vibrate([15, 20, 15]); break;
       case 'mouse':  sfx.squeak(); emojiBurst(pos.x, pos.y, ['💨', '🧀'], 6); floatText(pos.x, pos.y + c, 'Mňam!', '#f9a8d4', 0.7); vibrate([15, 20, 15]); break;
       default:       sfx.eat(p.combo); vibrate(15);
     }
@@ -2732,7 +2964,7 @@
   }
   function emoji(g, ch, x, y, size, rot = 0) {
     g.save(); g.translate(x, y); if (rot) g.rotate(rot);
-    g.font = `${size}px ${EMOJI_FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.font = `${size}px ${EMOJI_FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#000';
     g.fillText(ch, 0, 0); g.restore();
   }
   function rrect(g, x, y, w, h, r) { g.beginPath(); if (g.roundRect) g.roundRect(x, y, w, h, r); else g.rect(x, y, w, h); }
@@ -3498,6 +3730,28 @@
         g.fillStyle = '#ffffff'; for (const [x, y, r] of [[-0.45, -0.25, 0.17], [0.15, -0.5, 0.15], [0.5, -0.12, 0.13], [-0.05, -0.08, 0.1]]) { circle(g, m + x * u, m + y * u, r * u); g.fill(); }
         g.fillStyle = OUT; ell(g, m - u * 0.1, m + u * 0.38, u * 0.05, u * 0.08); g.fill(); ell(g, m + u * 0.1, m + u * 0.38, u * 0.05, u * 0.08); g.fill();
         break;
+      case '💎': {
+        const top = m - u * 0.5, mid = m - u * 0.12, bot = m + u * 0.88;
+        ink(rg(m, m, u, '#effdff', '#1fb6d6'), () => { g.beginPath(); g.moveTo(m - u * 0.55, top); g.lineTo(m + u * 0.55, top); g.lineTo(m + u * 0.92, mid); g.lineTo(m, bot); g.lineTo(m - u * 0.92, mid); g.closePath(); });
+        g.fillStyle = 'rgba(14,116,144,0.28)'; g.beginPath(); g.moveTo(m, bot); g.lineTo(m + u * 0.92, mid); g.lineTo(m + u * 0.38, mid); g.closePath(); g.fill();
+        g.strokeStyle = 'rgba(14,116,144,0.75)'; g.lineWidth = lw * 0.7; g.lineJoin = 'round';
+        g.beginPath(); g.moveTo(m - u * 0.92, mid); g.lineTo(m + u * 0.92, mid);
+        g.moveTo(m - u * 0.55, top); g.lineTo(m - u * 0.38, mid); g.lineTo(m, bot); g.lineTo(m + u * 0.38, mid); g.lineTo(m + u * 0.55, top);
+        g.moveTo(m - u * 0.38, mid); g.lineTo(m, top); g.lineTo(m + u * 0.38, mid); g.stroke();
+        g.fillStyle = 'rgba(255,255,255,0.85)'; g.beginPath(); g.moveTo(m - u * 0.5, top + u * 0.07); g.lineTo(m - u * 0.2, top + u * 0.07); g.lineTo(m - u * 0.36, mid - u * 0.03); g.lineTo(m - u * 0.72, mid - u * 0.03); g.closePath(); g.fill();
+        break;
+      }
+      case '🐟':
+        ink('#3d8fd6', () => { g.beginPath(); g.moveTo(m + u * 0.42, m); g.lineTo(m + u * 0.95, m - u * 0.48); g.quadraticCurveTo(m + u * 0.78, m, m + u * 0.95, m + u * 0.48); g.closePath(); });
+        ink('#3d8fd6', () => { g.beginPath(); g.moveTo(m - u * 0.35, m - u * 0.3); g.quadraticCurveTo(m - u * 0.05, m - u * 0.8, m + u * 0.28, m - u * 0.3); g.closePath(); });
+        ink(rg(m - u * 0.1, m, u * 0.8, '#b4ecff', '#2f8fd6'), () => ell(g, m - u * 0.12, m, u * 0.66, u * 0.44));
+        g.fillStyle = '#ffd166'; ell(g, m - u * 0.05, m + u * 0.2, u * 0.4, u * 0.13); g.fill();
+        g.strokeStyle = 'rgba(255,255,255,0.55)'; g.lineWidth = lw * 0.8;
+        for (const xo of [0.1, 0.28]) { g.beginPath(); g.arc(m + u * xo - u * 0.3, m, u * 0.3, -0.9, 0.9); g.stroke(); }
+        g.fillStyle = '#ffffff'; circle(g, m - u * 0.48, m - u * 0.1, u * 0.15); g.fill(); g.strokeStyle = OUT; g.lineWidth = lw * 0.7; g.stroke();
+        g.fillStyle = OUT; circle(g, m - u * 0.52, m - u * 0.1, u * 0.075); g.fill();
+        shine(m - u * 0.15, m - u * 0.22, u * 0.18, u * 0.06, 0);
+        break;
       default: ok = false;
     }
     return (foodCache[key] = ok ? cv : null);
@@ -3531,7 +3785,7 @@
   }
 
   function foodPos(f, now) {
-    const k = f.movedAt ? Math.min(1, (now - f.movedAt) / 150) : 1;
+    const k = f.movedAt ? Math.min(1, (now - f.movedAt) / (f.dur || 150)) : 1;
     const fx2 = f.fx ?? f.x, fy = f.fy ?? f.y;
     return { x: (fx2 + (f.x - fx2) * k + 0.5) * cell(), y: (fy + (f.y - fy) * k + 0.5) * cell() };
   }
@@ -3663,7 +3917,9 @@
     const pop = Math.max(0, Math.min(1, (now - f.bornAt) / 200));
     const popScale = pop < 1 ? pop * (1 + Math.sin(pop * Math.PI) * 0.5) : 1;
     if (popScale <= 0) return;
-    const bob = f.type === 'mouse' ? -Math.abs(Math.sin(now / 90)) * c * 0.1 : Math.sin(now / 260 + f.phase) * c * 0.07;
+    let bob = f.type === 'mouse' ? -Math.abs(Math.sin(now / 90)) * c * 0.1 : Math.sin(now / 260 + f.phase) * c * 0.07;
+    if (f.dur && f.movedAt) bob -= Math.sin(clamp01((now - f.movedAt) / f.dur) * Math.PI) * c * 1.1;   // ryba vyskočí z vody
+    if (f.type === 'gem' && Math.random() < 0.06) particles.push({ x: x + (Math.random() - .5) * c * 0.9, y: y + (Math.random() - .5) * c * 0.9, vx: 0, vy: -c * 0.6, life: 0.9, decay: 1.4, r: c * 0.07, color: '#ffffff' });
     ctx.fillStyle = 'rgba(0,0,0,0.35)';
     ctx.beginPath(); ctx.ellipse(x, y + c * 0.4, c * 0.3 * popScale, c * 0.1 * popScale, 0, 0, TAU); ctx.fill();
     const pulse = f.type === 'bomb' ? 0.6 + Math.sin(now / (left < 4 ? 60 : 160)) * 0.4 : 0.8 + Math.sin(now / 200) * 0.2;
@@ -3674,8 +3930,9 @@
     ctx.globalAlpha = 1;
     ctx.save();
     ctx.translate(x, y + bob - c * 0.02);
-    if (f.type !== 'mouse') ctx.rotate(Math.sin(now / 400 + f.phase) * 0.15);
-    ctx.scale(popScale * (f.type === 'mouse' ? -f.face : 1), popScale);
+    if (f.type === 'fish') ctx.rotate(Math.sin(now / 85 + f.phase) * 0.45);   // ryba se plácá
+    else if (f.type !== 'mouse') ctx.rotate(Math.sin(now / 400 + f.phase) * 0.15);
+    ctx.scale(popScale * (f.type === 'mouse' || f.type === 'fish' ? -f.face : 1), popScale);
     foodIcon(ctx, f.emoji, 0, c * 0.02, c * 1.08);
     ctx.restore();
     if (f.type === 'mouse' && players.some(p => p.alive && Math.abs(p.body[0].x - f.x) + Math.abs(p.body[0].y - f.y) <= 3))
@@ -3763,6 +4020,8 @@
     ctx.globalAlpha = 1;
 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
+    drawSky(W, c, now);
+    drawFront(W, c, now);
     if (time < slowUntil && phase === 'play') {
       ctx.strokeStyle = `rgba(96,165,250,${0.35 + Math.sin(now / 150) * 0.15})`;
       ctx.lineWidth = c * 0.35; ctx.strokeRect(0, 0, W, W);
@@ -4321,6 +4580,7 @@
     if (isChili(p)) s += '🌶️ ';
     if (isMagnet(p)) s += '🧲 ';
     if (comboActive(p)) s += `<span class="combo">×${p.combo}</span> `;
+    if (mode === 1 && gems.total) s += `💎${gems.found}/${gems.total} `;
     return s;
   }
   function updateHud(reset) {
