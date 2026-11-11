@@ -148,8 +148,10 @@
   button.secondary { background: rgba(255,255,255,.1); color: var(--text); box-shadow: inset 0 0 0 1px var(--glass-border); }
   #play { animation: glow 1.8s ease-in-out infinite; }
   @keyframes glow { 50% { box-shadow: 0 8px 34px rgba(74,222,128,.6), inset 0 -3px 0 rgba(0,0,0,.15); } }
-  .row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; max-width: 440px; width: 100%; }
   .row .hidden { display: none; }
+  .row #contBtn { flex: 1 0 100%; order: -1; }
+  .row #play { flex: 1 0 100%; order: -2; }
 
   .legend { display: grid; grid-template-columns: repeat(3, auto); gap: 4px 12px; font-size: 12.5px; color: var(--muted); justify-content: center; }
   .legend span { white-space: nowrap; text-align: left; }
@@ -364,6 +366,7 @@
     button { min-height: 52px; font-size: 19px; }
     .row { width: 100%; max-width: 440px; gap: 10px; }
     .row #play { flex: 1 0 100%; min-height: 62px; font-size: 23px; }
+    .row #contBtn { flex: 1 0 100%; min-height: 50px; font-size: 19px; }
     .row .secondary { flex: 1 1 0; min-width: 0; padding: 10px 4px; font-size: 16px; white-space: nowrap; }
     .seg { width: 100%; max-width: 440px; }
     .seg button { flex: 1; min-height: 48px; font-size: 17px; }
@@ -478,6 +481,7 @@
       </div>
       <div class="row">
         <button id="play">Hrát</button>
+        <button id="contBtn" class="hidden">▶ Od světa</button>
         <button id="wardrobeBtn" class="secondary">🎨 Šatník</button>
         <button id="lbBtn" class="secondary">🏆 Žebříček</button>
         <button id="setBtn" class="secondary">⚙️ Nastavení</button>
@@ -1084,7 +1088,11 @@
     sfx.milestone(); launchConfetti(50); punch(true); vibrate([30, 40, 30]);
     if (level >= 5 && mode === 1 && !rival) rivalRespawnAt = time + 1.5;
   }
-  function recomputeSpeed() { speed = Math.min(D().max, D().base + (level - 1) * D().lvl + levelEaten * D().step); }
+  // první úroveň nového světa jede rychlostí té předchozí – je čas se rozkoukat
+  function recomputeSpeed() {
+    const l = level > 1 && level === world.from ? level - 1 : level;
+    speed = Math.min(D().max, D().base + (l - 1) * D().lvl + levelEaten * D().step);
+  }
   // ovoce stárne: čím déle leží, tím míň bodů
   function foodValue(f) {
     const def = FOOD[f.type];
@@ -1416,11 +1424,16 @@
   }
 
   // ---------- padající věci (kokosy, lávové bomby) ----------
-  function dropTarget(h, dmin, dmax) {
+  // dir: směr hada – do pásu přímo před hlavou nic nespadne (nedá se uhnout)
+  function dropTarget(h, dmin, dmax, dir) {
     for (let t = 0; t < 50; t++) {
       const x = h.x + Math.floor(Math.random() * (2 * dmax + 1)) - dmax, y = h.y + Math.floor(Math.random() * (2 * dmax + 1)) - dmax;
       const d = Math.abs(x - h.x) + Math.abs(y - h.y);
       if (d < dmin || d > dmax || x < ring || y < ring || x >= N - ring || y >= N - ring) continue;
+      if (dir) {
+        const fw = (x - h.x) * dir.x + (y - h.y) * dir.y, side = Math.abs((x - h.x) * dir.y - (y - h.y) * dir.x);
+        if (fw >= 0 && fw <= 6 && side <= 1) continue;
+      }
       if (occupied(x, y) || drops.some(o => o.x === x && o.y === y)) continue;
       return { x, y };
     }
@@ -1442,7 +1455,7 @@
       if (onSnake || terrain.has(key) || rocks.has(key)) continue;   // rozbije se o hada
       const f = foods.find(f => f.x === d.x && f.y === d.y && f.type !== 'gem');
       if (f) { foods = foods.filter(o => o !== f); if (f.type === 'apple' && !f.extra) spawn('apple'); }
-      rocks.set(key, { x: d.x, y: d.y, bornAt: now, v: 0, kind: lava ? 'lavapool' : 'coconut', until: time + (lava ? 6 : 8) });
+      rocks.set(key, { x: d.x, y: d.y, bornAt: now, v: 0, kind: lava ? 'lavapool' : 'coconut', until: time + (lava ? 6 : 5) });
     }
   }
   // ve velkém světě se jídlo objevuje poblíž hada
@@ -1467,8 +1480,8 @@
       if (!hz.next) hz.next = time + 5;
       if (time >= hz.next) {
         hz.next = time + (sub ? 4.5 : 6) * hk * (0.8 + Math.random() * 0.4);
-        const t = dropTarget(h, 2, 7);
-        if (t) { drops.push({ kind: 'coconut', x: t.x, y: t.y, landAt: time + 1.7, warn: 1.7, tree: nearestTree(t, 4) }); sfx.whistle(); }
+        const t = dropTarget(h, 2, 7, p.dir);
+        if (t) { drops.push({ kind: 'coconut', x: t.x, y: t.y, landAt: time + 2.3, warn: 2.3, tree: nearestTree(t, 4) }); sfx.whistle(); }
       }
       // z řeky občas vyskočí ryba na břeh – dá se sníst
       if (!hz.fishNext) hz.fishNext = time + 7;
@@ -1503,7 +1516,7 @@
         cr.eruptAt = performance.now();
         const n = Math.min(7, 3 + sub);
         for (let k = 0; k < n; k++) {
-          const t = dropTarget(h, 2, 8);
+          const t = dropTarget(h, 2, 8, p.dir);
           if (t) drops.push({ kind: 'lava', x: t.x, y: t.y, landAt: time + 1.5 + k * 0.18, warn: 1.5 + k * 0.18, from: { x: cr.x + 1, y: cr.y + 1 } });
         }
         shake(0.5, 0.3); sfx.erupt(); banner('🌋 ERUPCE!', '#f97316', 0.9); vibrate([40, 30, 60]);
@@ -2378,14 +2391,28 @@
   }
   function moveFood(f, x, y) { f.fx = f.x; f.fy = f.y; f.x = x; f.y = y; f.movedAt = performance.now(); }
 
-  function newGame() {
+  // nejdál dosažený svět (1 hráč, podle obtížnosti) – dá se v něm začít
+  function reachedWorld() {
+    if (mode !== 1) return null;
+    const w = worldFor(parseInt(store.get('had-lvl-' + diff, 0)) || 0);
+    return w === WORLDS[0] ? null : w;
+  }
+  function updateCont() {
+    const w = reachedWorld(), b = $('contBtn');
+    b.classList.toggle('hidden', !w);
+    if (w) b.textContent = `▶ Hrát od: ${w.name} ${w.icon}`;
+  }
+  function newGame(startW) {
     audio();
+    startW = mode === 1 && startW ? startW : WORLDS[0];
     players = mode === 1 ? [makePlayer(0, 9, 10, 1)] : [makePlayer(0, 4, 5, 1), makePlayer(1, 15, 14, -1)];
     foods = []; portals = []; particles = []; texts = []; banners = []; confetti = [];
     acc = 0; eaten = 0; time = 0; slowUntil = 0; frenzyUntil = 0;
-    level = 1; levelEaten = 0; pendingLevel = false; rocks = new Map(); sliders = []; ring = 0; shrinkNext = 0; shrinkMax = 0;
+    level = startW.from; levelEaten = 0; pendingLevel = false; rocks = new Map(); sliders = []; ring = 0; shrinkNext = 0; shrinkMax = 0;
     rival = null; rivalRespawnAt = 0; sheds = []; stepNo = 0;
-    travel = null; buildWorld(WORLDS[0]); placePlayers();
+    travel = null; buildWorld(startW); placePlayers();
+    if (startW !== WORLDS[0]) placeLevel();
+    if (level >= 5 && mode === 1) rivalRespawnAt = 4;
     recomputeSpeed();
     frenzyNext = 22 + Math.random() * 10;
     cam.k = cam.target = 0; zoomAmt = 0.14;
@@ -2827,6 +2854,7 @@
 
     updateHud(true);
     playBtn.textContent = 'Hrát znovu';
+    updateCont();
     if (!laughDef) laughDef = pickLaugh(false, false);
     const reveal = () => {
       if (phase !== 'over') return;
@@ -4625,6 +4653,7 @@
       hideLaugh();
       clearSaveStatus();
       playBtn.textContent = 'Hrát';
+      updateCont();
     }
     setHint();
     updatePads();
@@ -4637,6 +4666,7 @@
     diff = d; store.set('had-diff', d);
     best = parseInt(store.get('had-best-' + diff, 0)) || 0;
     document.querySelectorAll('#diffSeg button').forEach(b => b.classList.toggle('active', b.dataset.diff === d));
+    if (phase === 'menu' || phase === 'over') updateCont();
     updateHud(true);
   }
   function setMuted(v) {
@@ -4649,8 +4679,8 @@
     if (phase === 'play' || phase === 'countdown') paused = !paused;
     $('pause').textContent = paused ? '▶️' : '⏸';
   }
-  function tryStart() {
-    if ((phase === 'menu' || phase === 'over') && canRestart && !wardrobeOpen && !lbOpen && !settingsOpen && !loginOpen) { newGame(); $('pause').textContent = '⏸'; }
+  function tryStart(startW) {
+    if ((phase === 'menu' || phase === 'over') && canRestart && !wardrobeOpen && !lbOpen && !settingsOpen && !loginOpen) { newGame(startW); $('pause').textContent = '⏸'; }
   }
 
   // ---------- ovládání ----------
@@ -4813,7 +4843,8 @@
     if (document.hidden && (phase === 'play' || phase === 'countdown') && !paused) togglePause();
   });
 
-  playBtn.addEventListener('click', tryStart);
+  playBtn.addEventListener('click', () => tryStart());
+  $('contBtn').addEventListener('click', () => tryStart(reachedWorld()));
   document.querySelectorAll('#modeSeg button').forEach(b => b.addEventListener('click', () => setMode(+b.dataset.mode)));
   document.querySelectorAll('#diffSeg button').forEach(b => b.addEventListener('click', () => { setDiff(b.dataset.diff); sfx.click(); }));
   $('mute').addEventListener('click', () => setMuted(!muted));

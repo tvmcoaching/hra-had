@@ -12,9 +12,10 @@ Stačí otevřít `index.html` v prohlížeči.
 - Tři obtížnosti (😌 Lehká, 🙂 Normální, 😈 Těžká), každá má vlastní rekord. Online žebříček je jen pro Normální.
 - Každá úroveň potřebuje víc ovoce (6, 7, 8 … max 16). S úrovní roste rychlost i body (×1, ×1, ×2, ×2, ×3 …).
 - Ovoce stárne: čím déle leží, tím míň bodů (až na třetinu).
+- Po prohře jde hrát rovnou od nejdál dosaženého světa (tlačítko „▶ Hrát od: …“, skóre od nuly). První úroveň nového světa nezrychluje.
 - Každé 2 úrovně nový svět. Všechny světy mají pevnou mapu (nic se neposouvá), 20×20, džungle 24×24:
   - 🌿 **Louka** (úr. 1–2): na 2. úrovni kameny
-  - 🌴 **Džungle** (úr. 3–4): stromy a palmy na tmavé hlíně (jasně vidět, co je překážka), liány, řeka s lekníny zpomaluje (přes mosty ne), opice ze stromů hází kokosy, z řeky vyskakují ryby 🐟 (+3, dají se sníst)
+  - 🌴 **Džungle** (úr. 3–4): stromy a palmy na tmavé hlíně (jasně vidět, co je překážka), liány, řeka s lekníny zpomaluje (přes mosty ne), opice ze stromů hází kokosy (nikdy přímo před hlavu, 2,3 s varování, na zemi leží 5 s), z řeky vyskakují ryby 🐟 (+3, dají se sníst)
   - 🏜️ **Poušť** (úr. 5–6): kaktusy, skály, tekutý písek zpomalí, převalovníky, písečná bouře, divoký had
   - 🏙️ **Město** (úr. 7–8): domy, parky, silnice s jednosměrnými pruhy a auty (přejedou ovoce, na hada troubí)
   - ❄️ **Ledové království** (úr. 9–10): na ledu had klouže (zatáčí o krok později), ledové kry, sněhové koule
