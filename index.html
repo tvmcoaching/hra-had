@@ -561,7 +561,7 @@
 <script>
 (() => {
   let N = 20;            // velikost světa (v políčkách) – mění se podle světa
-  const VIEW = 20;       // kolik políček je vidět na šířku obrazovky
+  let VIEW = 20;         // kolik políček je vidět na šířku obrazovky (= velikost mapy, nic se neposouvá)
   const BASE_SPEED = 5;
   // obtížnost: rychlost, zrychlení za úroveň, jak rychle stárne ovoce, kolik kamenů
   const DIFFS = {
@@ -1141,7 +1141,7 @@
   // Každé 2 úrovně nový svět. Velké světy se posouvají – kamera jede za hadem.
   const WORLDS = [
     { id: 'meadow',  name: 'Louka',   icon: '🌿', size: 20, gen: 20, from: 1,  fill: 'rock',     tip: '' },
-    { id: 'jungle',  name: 'Džungle', icon: '🌴', size: 20, gen: 20, from: 3,  fill: 'tree',     tip: 'Opice hází kokosy! 🐒 Z řeky vyskakují ryby 🐟', more: 'Opice zlobí víc! 🥥' },
+    { id: 'jungle',  name: 'Džungle', icon: '🌴', size: 24, gen: 20, from: 3,  fill: 'tree',     tip: 'Opice hází kokosy! 🐒 Z řeky vyskakují ryby 🐟', more: 'Opice zlobí víc! 🥥' },
     { id: 'desert',  name: 'Poušť',   icon: '🏜️', size: 20, gen: 34, from: 5,  fill: 'mesa',     tip: 'Kaktusy píchají, písek zpomalí a číhá tu divoký had! 🐍', more: 'Víc převalovníků! 🌾' },
     { id: 'city',    name: 'Město',   icon: '🏙️', size: 20, gen: 36, from: 7,  fill: 'building', tip: 'Pozor na auta! Na silnici se rozhlížej. 🚗', more: 'Hustší provoz! 🚗' },
     { id: 'ice',     name: 'Ledové království', icon: '❄️', size: 20, gen: 38, from: 9, fill: 'iceblock', tip: 'Na ledu to klouže – zatáčej dřív! ⛄', more: 'Víc sněhových koulí! ⛄' },
@@ -1295,7 +1295,7 @@
 
   function buildWorld(w) {
     world = w;
-    N = mode === 2 ? VIEW : w.size;
+    N = mode === 2 ? 20 : w.size; VIEW = N;
     terrain = new Map(); ground = new Uint8Array(N * N); drops = []; lavaCells = []; waterCells = []; craters = [];
     rocks = new Map(); sliders = []; ring = 0; shrinkNext = 0; shrinkMax = 0;
     foods = []; portals = []; rival = null; sheds = [];

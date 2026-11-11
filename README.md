@@ -12,7 +12,7 @@ Stačí otevřít `index.html` v prohlížeči.
 - Tři obtížnosti (😌 Lehká, 🙂 Normální, 😈 Těžká), každá má vlastní rekord. Online žebříček je jen pro Normální.
 - Každá úroveň potřebuje víc ovoce (6, 7, 8 … max 16). S úrovní roste rychlost i body (×1, ×1, ×2, ×2, ×3 …).
 - Ovoce stárne: čím déle leží, tím míň bodů (až na třetinu).
-- Každé 2 úrovně nový svět. Všechny světy mají pevnou mapu 20×20 (nic se neposouvá):
+- Každé 2 úrovně nový svět. Všechny světy mají pevnou mapu (nic se neposouvá), 20×20, džungle 24×24:
   - 🌿 **Louka** (úr. 1–2): na 2. úrovni kameny
   - 🌴 **Džungle** (úr. 3–4): stromy a palmy na tmavé hlíně (jasně vidět, co je překážka), liány, řeka s lekníny zpomaluje (přes mosty ne), opice ze stromů hází kokosy, z řeky vyskakují ryby 🐟 (+3, dají se sníst)
   - 🏜️ **Poušť** (úr. 5–6): kaktusy, skály, tekutý písek zpomalí, převalovníky, písečná bouře, divoký had
