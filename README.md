@@ -12,16 +12,15 @@ Stačí otevřít `index.html` v prohlížeči.
 - Tři obtížnosti (😌 Lehká, 🙂 Normální, 😈 Těžká), každá má vlastní rekord. Online žebříček je jen pro Normální.
 - Každá úroveň potřebuje víc ovoce (6, 7, 8 … max 16). S úrovní roste rychlost i body (×1, ×1, ×2, ×2, ×3 …).
 - Ovoce stárne: čím déle leží, tím míň bodů (až na třetinu).
-- Každé 2 úrovně nový svět. Velké světy se posouvají (kamera jede za hadem), vpravo nahoře je minimapa a šipky na okraji ukazují k ovoci mimo obrazovku:
-  - 🌿 **Louka** (úr. 1–2, 20×20): na 2. úrovni kameny
-  - 🌴 **Džungle** (úr. 3–4, 30×30): hustý porost s liánami, řeka s lekníny zpomaluje (přes mosty ne), opice ze stromů hází kokosy, z řeky vyskakují ryby 🐟 (+3, dají se sníst)
-  - 🏜️ **Poušť** (úr. 5–6, 34×34): kaktusy, skály, tekutý písek zpomalí, převalovníky, písečná bouře, divoký had
-  - 🏙️ **Město** (úr. 7–8, 36×36): domy, parky, silnice s jednosměrnými pruhy a auty (přejedou ovoce, na hada troubí)
-  - ❄️ **Ledové království** (úr. 9–10, 38×38): na ledu had klouže (zatáčí o krok později), ledové kry, sněhové koule
-  - 🌋 **Sopka** (úr. 11+, 40×40): lávové řeky, erupce kráterů (lávové bomby), od 12. úrovně se blíží láva od okrajů
-- V každém velkém světě jsou schované 3 poklady 💎 (+10 × násobek úrovně, za všechny tři bonus). Na minimapě blikají, v HUD je počítadlo.
+- Každé 2 úrovně nový svět. Všechny světy mají pevnou mapu 20×20 (nic se neposouvá):
+  - 🌿 **Louka** (úr. 1–2): na 2. úrovni kameny
+  - 🌴 **Džungle** (úr. 3–4): stromy a palmy na tmavé hlíně (jasně vidět, co je překážka), liány, řeka s lekníny zpomaluje (přes mosty ne), opice ze stromů hází kokosy, z řeky vyskakují ryby 🐟 (+3, dají se sníst)
+  - 🏜️ **Poušť** (úr. 5–6): kaktusy, skály, tekutý písek zpomalí, převalovníky, písečná bouře, divoký had
+  - 🏙️ **Město** (úr. 7–8): domy, parky, silnice s jednosměrnými pruhy a auty (přejedou ovoce, na hada troubí)
+  - ❄️ **Ledové království** (úr. 9–10): na ledu had klouže (zatáčí o krok později), ledové kry, sněhové koule
+  - 🌋 **Sopka** (úr. 11+): lávové řeky, erupce kráterů (lávové bomby), od 12. úrovně se blíží láva od okrajů
+- Od džungle jsou v každém světě 3 poklady 💎 (+10 × násobek úrovně, za všechny tři bonus). V HUD je počítadlo.
 - Při přechodu do nového světa had vyleze z portálu (zbytek těla se vysouvá postupně).
-- Ve hře pro 2 hráče mají světy velikost 20×20 a neposouvají se.
 - Had pluje vlněním, mlsá jazykem, když cítí jídlo, a při 25+ bodech svléká kůži.
 
 ## Přihlášení, historie a žebříček (Supabase)

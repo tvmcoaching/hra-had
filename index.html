@@ -489,7 +489,7 @@
         <span>🪨 kameny</span><span>🐍 divoký had</span><span>⏳ ovoce stárne</span>
       </div>
       <div class="tip">Jez rychle za sebou → combo ×2 až ×5 · občas přijde ovocná horečka 🍉</div>
-      <div class="tip">Každé 2 úrovně nový svět: 🌿 → 🌴 → 🏜️ → 🏙️ → ❄️ → 🌋 · v každém najdi 3 poklady 💎</div>
+      <div class="tip">Každé 2 úrovně nový svět: 🌿 → 🌴 → 🏜️ → 🏙️ → ❄️ → 🌋 · od džungle v každém světě 3 poklady 💎</div>
       </div>
     </div>
 
@@ -1062,7 +1062,7 @@
     // pohyblivá nebezpečí světa: převalovníky, auta, sněhové koule
     const sub = level - world.from;
     const base = { desert: 7, city: 12, ice: 7 }[world.id] || 0;
-    const want = Math.round(base * (1 + 0.5 * Math.min(2, sub)) * (N * N) / (world.size * world.size) * (diff === 'easy' ? 0.7 : diff === 'hard' ? 1.25 : 1));
+    const want = Math.round(base * (1 + 0.5 * Math.min(2, sub)) * (N * N) / (world.gen * world.gen) * (diff === 'easy' ? 0.7 : diff === 'hard' ? 1.25 : 1));
     const mk = { desert: 'tumble', city: 'car', ice: 'snowball' }[world.id];
     for (let t = 0; mk && sliders.length < want && t < 600; t++) spawnMover(mk);
     // sopka: láva se blíží od okrajů
@@ -1140,12 +1140,12 @@
   // ===================== SVĚTY =====================
   // Každé 2 úrovně nový svět. Velké světy se posouvají – kamera jede za hadem.
   const WORLDS = [
-    { id: 'meadow',  name: 'Louka',   icon: '🌿', size: 20, from: 1,  fill: 'rock',     tip: '' },
-    { id: 'jungle',  name: 'Džungle', icon: '🌴', size: 30, from: 3,  fill: 'tree',     tip: 'Opice hází kokosy! 🐒 Z řeky vyskakují ryby 🐟', more: 'Opice zlobí víc! 🥥' },
-    { id: 'desert',  name: 'Poušť',   icon: '🏜️', size: 34, from: 5,  fill: 'mesa',     tip: 'Kaktusy píchají, písek zpomalí a číhá tu divoký had! 🐍', more: 'Víc převalovníků! 🌾' },
-    { id: 'city',    name: 'Město',   icon: '🏙️', size: 36, from: 7,  fill: 'building', tip: 'Pozor na auta! Na silnici se rozhlížej. 🚗', more: 'Hustší provoz! 🚗' },
-    { id: 'ice',     name: 'Ledové království', icon: '❄️', size: 38, from: 9, fill: 'iceblock', tip: 'Na ledu to klouže – zatáčej dřív! ⛄', more: 'Víc sněhových koulí! ⛄' },
-    { id: 'volcano', name: 'Sopka',   icon: '🌋', size: 40, from: 11, fill: 'basalt',   tip: 'Sopky chrlí lávu! Do lávy nevjížděj.', more: 'Láva se blíží! 🔥' },
+    { id: 'meadow',  name: 'Louka',   icon: '🌿', size: 20, gen: 20, from: 1,  fill: 'rock',     tip: '' },
+    { id: 'jungle',  name: 'Džungle', icon: '🌴', size: 20, gen: 20, from: 3,  fill: 'tree',     tip: 'Opice hází kokosy! 🐒 Z řeky vyskakují ryby 🐟', more: 'Opice zlobí víc! 🥥' },
+    { id: 'desert',  name: 'Poušť',   icon: '🏜️', size: 20, gen: 34, from: 5,  fill: 'mesa',     tip: 'Kaktusy píchají, písek zpomalí a číhá tu divoký had! 🐍', more: 'Víc převalovníků! 🌾' },
+    { id: 'city',    name: 'Město',   icon: '🏙️', size: 20, gen: 36, from: 7,  fill: 'building', tip: 'Pozor na auta! Na silnici se rozhlížej. 🚗', more: 'Hustší provoz! 🚗' },
+    { id: 'ice',     name: 'Ledové království', icon: '❄️', size: 20, gen: 38, from: 9, fill: 'iceblock', tip: 'Na ledu to klouže – zatáčej dřív! ⛄', more: 'Víc sněhových koulí! ⛄' },
+    { id: 'volcano', name: 'Sopka',   icon: '🌋', size: 20, gen: 40, from: 11, fill: 'basalt',   tip: 'Sopky chrlí lávu! Do lávy nevjížděj.', more: 'Láva se blíží! 🔥' },
   ];
   const worldFor = l => { let w = WORLDS[0]; for (const x of WORLDS) if (l >= x.from) w = x; return w; };
   const G_WATER = 1, G_SAND = 2, G_ROAD = 3, G_ICE = 4, G_BRIDGE = 5, G_WALK = 6, G_GRASS = 7;
@@ -1182,7 +1182,7 @@
 
   // ---------- generování světa ----------
   function genWorld(w, R) {
-    const sc = N * N / (w.size * w.size);
+    const sc = N * N / (w.gen * w.gen);
     const cnt = n => Math.max(1, Math.round(n * sc));
     const spots = startSpots();
     const keep = new Set();
@@ -1221,7 +1221,7 @@
         const cx = rv + Math.round(Math.sin(y * 0.22 + ph) * 2.5);
         for (let k = 0; k < 2; k++) G(cx + k, y, bridges.has(y) ? G_BRIDGE : G_WATER, true);
       }
-      for (let k = 0; k < cnt(36); k++) blob(rx(), rx(), 2 + Math.floor(R() * 5), (x, y) => T(x, y, R() < 0.55 ? 'tree' : 'palm'));
+      for (let k = 0; k < cnt(11); k++) blob(rx(), rx(), 1 + Math.floor(R() * 3), (x, y) => T(x, y, R() < 0.55 ? 'tree' : 'palm'));
     } else if (w.id === 'desert') {
       // oáza
       const ox = 4 + Math.floor(R() * (N - 8)), oy = 4 + Math.floor(R() * (N - 8));
@@ -1311,12 +1311,12 @@
   // v každém velkém světě jsou schované 3 poklady
   function placeGems() {
     gems = { found: 0, total: 0 };
-    if (N <= VIEW || world.id === 'meadow') return;
-    const s0 = startSpots()[0], m = world.id === 'volcano' ? 15 : 3, got = [];
+    if (world.id === 'meadow') return;
+    const s0 = startSpots()[0], m = world.id === 'volcano' ? 5 : 1, got = [];
     const ok = (x, y) => x >= m && y >= m && x < N - m && y < N - m && !terrain.has(x * N + y) && ![G_WATER, G_BRIDGE, G_ROAD].includes(ground[x * N + y]);
     for (let t = 0; got.length < 3 && t < 3000; t++) {
       const x = Math.floor(Math.random() * N), y = Math.floor(Math.random() * N);
-      if (!ok(x, y) || Math.abs(x - s0.x) + Math.abs(y - s0.y) < 10) continue;
+      if (!ok(x, y) || Math.abs(x - s0.x) + Math.abs(y - s0.y) < 6) continue;
       if (got.some(o => Math.abs(o.x - x) + Math.abs(o.y - y) < N * (t < 2000 ? 0.4 : 0.2))) continue;
       got.push({ x, y });
     }
@@ -1464,9 +1464,9 @@
     if (!p) return;
     const h = p.body[0], sub = level - world.from, hk = diff === 'easy' ? 1.35 : diff === 'hard' ? 0.75 : 1;
     if (world.id === 'jungle') {
-      if (!hz.next) hz.next = time + 3;
+      if (!hz.next) hz.next = time + 5;
       if (time >= hz.next) {
-        hz.next = time + (sub ? 2.3 : 3.6) * hk * (0.8 + Math.random() * 0.4);
+        hz.next = time + (sub ? 4.5 : 6) * hk * (0.8 + Math.random() * 0.4);
         const t = dropTarget(h, 2, 7);
         if (t) { drops.push({ kind: 'coconut', x: t.x, y: t.y, landAt: time + 1.7, warn: 1.7, tree: nearestTree(t, 4) }); sfx.whistle(); }
       }
@@ -1635,9 +1635,8 @@
   function paintFern(g, x, y, c, s) {
     const n = 5 + Math.floor(s * 3), L = [];
     for (let k = 0; k < n; k++) { const a = -Math.PI / 2 + (k - (n - 1) / 2) * 0.45, l = c * (0.24 + 0.1 * hash(k, s * 9)); L.push([x + Math.cos(a) * l * 0.55, y + c * 0.12 + Math.sin(a) * l * 0.55, l * 0.55, a]); }
-    g.fillStyle = OUT; for (const [lx, ly, r, a] of L) { ell(g, lx, ly, r + c * 0.022, c * 0.085, a); g.fill(); }
-    L.forEach(([lx, ly, r, a], k) => { g.fillStyle = k % 2 ? '#3c9a36' : '#4cb446'; ell(g, lx, ly, r, c * 0.062, a); g.fill(); });
-    g.strokeStyle = '#2b6e27'; g.lineWidth = c * 0.018;
+    L.forEach(([lx, ly, r, a], k) => { g.fillStyle = k % 2 ? 'rgba(40,110,35,0.45)' : 'rgba(55,130,45,0.45)'; ell(g, lx, ly, r, c * 0.06, a); g.fill(); });
+    g.strokeStyle = 'rgba(30,80,25,0.4)'; g.lineWidth = c * 0.018;
     for (const [lx, ly, r, a] of L) { g.beginPath(); g.moveTo(lx - Math.cos(a) * r * 0.85, ly - Math.sin(a) * r * 0.85); g.lineTo(lx + Math.cos(a) * r * 0.85, ly + Math.sin(a) * r * 0.85); g.stroke(); }
   }
   function paintMushroom(g, x, y, c, col = '#e53935') {
@@ -1792,12 +1791,9 @@
         else if (r < 0.2) paintFlower(g, cx, cy, c * 0.06, ['#ffffff', '#f9a8d4', '#fde047', '#c4b5fd', '#fca5a5'][Math.floor(R() * 5)]);
         else if (r < 0.215) { g.fillStyle = OUT; ell(g, cx, cy, c * 0.1, c * 0.075); g.fill(); g.fillStyle = '#c9ced6'; ell(g, cx, cy - c * 0.01, c * 0.075, c * 0.055); g.fill(); }
       } else if (id === 'jungle') {
-        if (r < 0.16) paintTuft(g, cx, cy, c, '#2f7a2a');
-        else if (r < 0.28) paintFern(g, cx, cy, c, R());
-        else if (r < 0.33) paintFlower(g, cx, cy, c * 0.085, ['#ff4d6d', '#ff8c42', '#f72585', '#ffd23f', '#ffffff'][Math.floor(R() * 5)]);
-        else if (r < 0.35) paintMushroom(g, cx, cy, c, R() < 0.7 ? '#e53935' : '#f59e0b');
-        else if (r < 0.39) { for (let k = 0; k < 3; k++) { g.fillStyle = ['#c58a2e', '#9c6b2a', '#d9a441'][k]; ell(g, cx + (R() - .5) * c * 0.4, cy + (R() - .5) * c * 0.3, c * 0.09, c * 0.045, R() * 3); g.fill(); } }
-        else if (r < 0.405) { g.fillStyle = OUT; ell(g, cx, cy, c * 0.4, c * 0.24); g.fill(); g.fillStyle = '#7a5232'; ell(g, cx, cy, c * 0.36, c * 0.2); g.fill(); g.fillStyle = '#946640'; ell(g, cx - c * 0.06, cy - c * 0.04, c * 0.2, c * 0.09); g.fill(); g.fillStyle = 'rgba(255,255,255,0.5)'; ell(g, cx - c * 0.14, cy - c * 0.06, c * 0.06, c * 0.025); g.fill(); }
+        if (r < 0.16) paintTuft(g, cx, cy, c, '#3f8f35');
+        else if (r < 0.22) paintFern(g, cx, cy, c, R());
+        else if (r < 0.25) paintFlower(g, cx, cy, c * 0.06, ['#ffffff', '#fde047', '#f9a8d4'][Math.floor(R() * 3)]);
       } else if (id === 'desert') {
         if (r < 0.22) { g.strokeStyle = '#ddb46a'; g.lineWidth = c * 0.05; g.lineCap = 'round'; g.beginPath(); g.arc(cx, cy + c * 0.3, c * 0.32, Math.PI * 1.18, Math.PI * 1.82); g.stroke(); }
         else if (r < 0.28) { g.fillStyle = OUT; ell(g, cx, cy, c * 0.085, c * 0.065); g.fill(); g.fillStyle = '#c9955a'; ell(g, cx, cy - c * 0.01, c * 0.065, c * 0.045); g.fill(); }
@@ -1853,18 +1849,22 @@
         emoji(g, BSIGN[b % BSIGN.length], (mx + 0.5) * c, (my + 0.52) * c, c * 0.72);
       }
     }
-    // 5) ostatní překážky
+    // 5) ostatní překážky (v džungli pod nimi tmavá hlína, ať je jasné, kam se nedá)
+    if (id === 'jungle') for (const t of terrain.values()) {
+      if (t.kind !== 'tree' && t.kind !== 'palm') continue;
+      g.fillStyle = 'rgba(0,0,0,0.25)'; rrect(g, t.x * c + c * 0.08, t.y * c + c * 0.12, c * 0.96, c * 0.96, c * 0.24); g.fill();
+      g.fillStyle = '#6b4f2c'; rrect(g, t.x * c + c * 0.02, t.y * c + c * 0.02, c * 0.96, c * 0.96, c * 0.24); g.fill();
+      g.strokeStyle = '#3a2814'; g.lineWidth = c * 0.07; g.stroke();
+      g.fillStyle = 'rgba(255,255,255,0.12)'; rrect(g, t.x * c + c * 0.1, t.y * c + c * 0.08, c * 0.8, c * 0.2, c * 0.1); g.fill();
+    }
     for (const t of terrain.values()) {
       const cx = (t.x + 0.5) * c, cy = (t.y + 0.5) * c, px = t.x * c, py = t.y * c;
       switch (t.kind) {
         case 'tree':
-          if (id === 'jungle') {
-            paintTree(g, cx, cy, c * 1.14, t.v, ['#2a7f31', '#2f8a35', '#317a3a'][t.v % 3], ['#45a842', '#4fb54a', '#56a84a'][t.v % 3]);
-            const fc = ['#ff8c42', '#ff4d6d', '#ffd23f', '#c084fc'][t.v];
-            for (let k = 0; k < 3; k++) { const fx2 = cx + (hash(t.x, k) - 0.5) * c * 0.7, fy2 = cy + (hash(k, t.y) - 0.5) * c * 0.7; g.fillStyle = OUT; circle(g, fx2, fy2, c * 0.075); g.fill(); g.fillStyle = fc; circle(g, fx2, fy2, c * 0.055); g.fill(); g.fillStyle = 'rgba(255,255,255,0.6)'; circle(g, fx2 - c * 0.018, fy2 - c * 0.018, c * 0.018); g.fill(); }
-          } else paintTree(g, cx, cy, c, t.v, '#3e9b3a', '#62c450');
+          if (id === 'jungle') paintTree(g, cx, cy, c * 0.86, t.v, ['#1f6b2a', '#23752e', '#256a31'][t.v % 3], ['#3a9a3c', '#41a344', '#479a42'][t.v % 3]);
+          else paintTree(g, cx, cy, c, t.v, '#3e9b3a', '#62c450');
           break;
-        case 'palm': paintPalm(g, cx, cy, c, t.v); break;
+        case 'palm': paintPalm(g, cx, cy, id === 'jungle' ? c * 0.86 : c, t.v); break;
         case 'pine': paintPine(g, cx, cy, c, t.v); break;
         case 'cactus': paintCactus(g, cx, cy, c, t.v); break;
         case 'fountain': paintFountain(g, cx, cy, c); break;
@@ -2052,18 +2052,15 @@
       };
       const cols = ['#2e8b3a', '#3a9d3f', '#25753a', '#43a83f'];
       const cluster = (x, y, n, base, spread, size) => { for (let k = 0; k < n; k++) leaf(x + (R() - .5) * c * 0.6, y + (R() - .5) * c * 0.6, c * size * (0.8 + R() * 0.5), base + (R() - .5) * spread, cols[Math.floor(R() * 4)]); };
-      // liány shora
-      for (let k = 0; k < 4; k++) {
+      for (let k = 0; k < 0; k++) {
         const x = W * (0.12 + k * 0.17 + R() * 0.06), L = c * (1.2 + R() * 1.8);
         for (const [col, w] of [[OUT, c * 0.13], ['#6b8e23', c * 0.07]]) { g.strokeStyle = col; g.lineWidth = w; g.lineCap = 'round'; g.beginPath(); g.moveTo(x, -c); g.quadraticCurveTo(x + c * 0.4, L * 0.5, x + c * 0.1, L); g.stroke(); }
         for (let j = 1; j <= 3; j++) leaf(x + c * 0.15, L * j / 3.2, c * 0.55, j % 2 ? 0.6 : 2.5, cols[j % 4]);
       }
-      cluster(0, 0, 9, 0.75, 1.2, 1.9);              // levý horní roh
-      cluster(0, W, 8, -0.7, 1.2, 1.8);              // levý dolní roh
-      cluster(W, W, 8, -2.4, 1.2, 1.8);              // pravý dolní roh
-      for (let k = 0; k < 3; k++) cluster(W * (0.3 + k * 0.17), -c * 0.1, 3, Math.PI / 2 + (R() - .5), 0.8, 1.1);   // horní okraj
-      cluster(-c * 0.1, W * 0.5, 3, 0.1, 0.8, 1.2);  // levý okraj
-      cluster(W + c * 0.1, W * 0.62, 3, Math.PI, 0.8, 1.2);
+      cluster(-c * 0.3, -c * 0.3, 4, 0.75, 0.9, 1.3);      // jen malé listy v rozích
+      cluster(-c * 0.3, W + c * 0.3, 4, -0.7, 0.9, 1.3);
+      cluster(W + c * 0.3, W + c * 0.3, 4, -2.4, 0.9, 1.3);
+      cluster(W + c * 0.3, -c * 0.3, 4, 2.4, 0.9, 1.3);
     } else if (id === 'ice') {
       // rampouchy nahoře a jinovatka v rozích
       for (const [x, y] of [[0, 0], [0, W], [W, W], [W, 0]]) {
