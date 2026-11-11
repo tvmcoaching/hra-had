@@ -3503,8 +3503,28 @@
     return (foodCache[key] = ok ? cv : null);
   }
   // nakreslí jídlo/bonus – kreslený obrázek, když ho máme, jinak emoji
-  function foodIcon(g, ch, x, y, size, rot = 0) {
+  // „samolepka“: bílý lem + tmavý obrys kolem kresleného obrázku, ať je vidět na každém podkladu
+  const stickerCache = {};
+  function stickerSprite(ch, size) {
+    const key = ch + ':' + Math.round(size);
+    if (key in stickerCache) return stickerCache[key];
     const sp = foodSprite(ch, size);
+    if (!sp) return (stickerCache[key] = null);
+    const S = sp.width, cv = document.createElement('canvas'); cv.width = cv.height = S;
+    const g = cv.getContext('2d');
+    const ring = (r, col) => {
+      const t = document.createElement('canvas'); t.width = t.height = S; const tg = t.getContext('2d');
+      for (let k = 0; k < 16; k++) { const a = k / 16 * TAU; tg.drawImage(sp, Math.cos(a) * r, Math.sin(a) * r); }
+      tg.globalCompositeOperation = 'source-in'; tg.fillStyle = col; tg.fillRect(0, 0, S, S);
+      g.drawImage(t, 0, 0);
+    };
+    ring(size * 0.1, 'rgba(20,16,40,0.75)');
+    ring(size * 0.065, '#ffffff');
+    g.drawImage(sp, 0, 0);
+    return (stickerCache[key] = cv);
+  }
+  function foodIcon(g, ch, x, y, size, rot = 0, plain = false) {
+    const sp = plain ? foodSprite(ch, size) : stickerSprite(ch, size);
     if (!sp) { emoji(g, ch, x, y, size, rot); return; }
     if (rot) { g.save(); g.translate(x, y); g.rotate(rot); g.drawImage(sp, -sp.width / 2, -sp.height / 2); g.restore(); }
     else g.drawImage(sp, x - sp.width / 2, y - sp.height / 2);
@@ -3645,18 +3665,18 @@
     if (popScale <= 0) return;
     const bob = f.type === 'mouse' ? -Math.abs(Math.sin(now / 90)) * c * 0.1 : Math.sin(now / 260 + f.phase) * c * 0.07;
     ctx.fillStyle = 'rgba(0,0,0,0.35)';
-    ctx.beginPath(); ctx.ellipse(x, y + c * 0.36, c * 0.26 * popScale, c * 0.08 * popScale, 0, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(x, y + c * 0.4, c * 0.3 * popScale, c * 0.1 * popScale, 0, 0, TAU); ctx.fill();
     const pulse = f.type === 'bomb' ? 0.6 + Math.sin(now / (left < 4 ? 60 : 160)) * 0.4 : 0.8 + Math.sin(now / 200) * 0.2;
-    const g = ctx.createRadialGradient(x, y + bob, 0, x, y + bob, c * 0.75);
-    g.addColorStop(0, def.glow + '66'); g.addColorStop(1, def.glow + '00');
+    const g = ctx.createRadialGradient(x, y + bob, 0, x, y + bob, c * 0.95);
+    g.addColorStop(0, '#ffffffcc'); g.addColorStop(0.45, def.glow + 'aa'); g.addColorStop(1, def.glow + '00');
     ctx.globalAlpha = pulse;
-    ctx.fillStyle = g; circle(ctx, x, y + bob, c * 0.75); ctx.fill();
+    ctx.fillStyle = g; circle(ctx, x, y + bob, c * 0.95); ctx.fill();
     ctx.globalAlpha = 1;
     ctx.save();
     ctx.translate(x, y + bob - c * 0.02);
     if (f.type !== 'mouse') ctx.rotate(Math.sin(now / 400 + f.phase) * 0.15);
     ctx.scale(popScale * (f.type === 'mouse' ? -f.face : 1), popScale);
-    foodIcon(ctx, f.emoji, 0, c * 0.02, c * 0.88);
+    foodIcon(ctx, f.emoji, 0, c * 0.02, c * 1.08);
     ctx.restore();
     if (f.type === 'mouse' && players.some(p => p.alive && Math.abs(p.body[0].x - f.x) + Math.abs(p.body[0].y - f.y) <= 3))
       emoji(ctx, '❗', x + c * 0.3, y - c * 0.55 + bob, c * 0.4);

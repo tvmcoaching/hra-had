@@ -1,5 +1,5 @@
 // Had – offline režim. Při změně hry zvyš číslo verze, ať se stáhne nová.
-const VERSION = 'had-v8';
+const VERSION = 'had-v9';
 const CORE = ['./', './index.html', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png',
   './icons/apple-touch-icon.png', './icons/favicon-32.png',
