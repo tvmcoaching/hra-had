@@ -47,8 +47,8 @@
     position: fixed; inset: 0; height: 100vh; height: 100dvh;
     display: grid; justify-items: center; align-content: center;
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto auto minmax(0, var(--stage-row, 1fr)) auto auto;
-    grid-template-areas: "top" "scores" "stage" "pads" "hint";
+    grid-template-rows: auto auto minmax(0, var(--stage-row, 1fr)) auto auto auto;
+    grid-template-areas: "top" "scores" "stage" "prog" "pads" "hint";
     padding: calc(var(--sat) + 12px) calc(var(--sar) + var(--pad)) calc(var(--sab) + 12px) calc(var(--sal) + var(--pad));
     gap: 10px;
     touch-action: none; user-select: none; -webkit-user-select: none;
@@ -67,7 +67,7 @@
 
   .top { grid-area: top; display: flex; align-items: center; gap: 8px; width: var(--bw); max-width: 100%; }
   h1 { margin: 0 auto 0 0; font-size: 34px; font-weight: 700; letter-spacing: 1px; display: flex; align-items: center; gap: 8px; }
-  h1 .logo { display: inline-block; animation: wiggle 2.4s ease-in-out infinite; transform-origin: 50% 80%; }
+  h1 .logo { display: inline-block; width: 1.5em; height: 1.2em; }   /* malý statický had ve vybraném vzhledu */
   h1 .word { background: linear-gradient(90deg, #4ade80, #22d3ee, #b388ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
   @keyframes wiggle { 0%,100% { transform: rotate(-8deg); } 50% { transform: rotate(8deg); } }
 
@@ -96,7 +96,18 @@
   .chips { font-size: 15px; font-weight: 600; color: var(--muted); white-space: nowrap; text-align: right; }
   .chips .combo { color: #fde047; }
   .chips .rw { display: inline-block; padding: 0 5px; border-radius: 8px; background: #7c3aed; color: #fff; box-shadow: 0 0 8px #a78bfa; }
-  .lvlbar { position: absolute; left: 0; bottom: 0; height: 3px; width: 0; background: linear-gradient(90deg, #4ade80, #fde047); box-shadow: 0 0 8px #4ade80; transition: width .3s; }
+  /* pruh postupu úrovně pod plochou */
+  .prog { grid-area: prog; box-sizing: border-box; width: var(--bw); max-width: 100%; display: flex; align-items: center; gap: 10px;
+    min-height: 30px; padding: 3px 14px; border-radius: 999px; background: var(--glass); border: 1px solid var(--glass-border);
+    font-size: 14px; font-weight: 700; white-space: nowrap; }
+  .prog.off { visibility: hidden; }
+  .prog .pbar { flex: 1; min-width: 40px; height: 8px; border-radius: 99px; background: rgba(0,0,0,.3); overflow: hidden; }
+  .prog .pbar i { display: block; height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, #4ade80, #fde047, #fb923c); transition: width .3s; }
+  .prog .pnext { color: var(--muted); font-weight: 600; font-size: 13px; }
+  .prog .pnext:empty, .prog .pgem:empty { display: none; }
+  /* aktivní bonusy: pod ikonou ubývající čárka */
+  .chips .pw { position: relative; display: inline-block; }
+  .chips .pw::after { content: ""; position: absolute; left: 6%; right: 6%; bottom: -3px; height: 3px; border-radius: 2px; background: var(--pc); transform: scaleX(var(--t)); transform-origin: left; }
   #diffSeg button { padding: 7px 12px; }
 
   .wrap { position: relative; width: var(--bw); height: var(--bw); flex-shrink: 0; }
@@ -127,6 +138,8 @@
   .overlay.hidden { display: none; }
   .hero { font-size: 40px; line-height: 1; animation: hop 1.2s ease-in-out infinite; }
   @keyframes hop { 0%,100% { transform: translateY(0) rotate(-6deg); } 50% { transform: translateY(-10px) rotate(6deg); } }
+  .hero.art { animation: none; width: 100%; max-width: 260px; height: 64px; }   /* kreslený had místo emoji */
+  .hero.art canvas { display: block; width: 100%; height: 100%; }
   .overlay h2 { margin: 0; font-size: 26px; font-weight: 700; }
   .overlay p { margin: 0; color: var(--muted); line-height: 1.4; max-width: 360px; }
   .overlay p.unlock { color: #fde047; font-weight: 600; }
@@ -296,7 +309,7 @@
   .score small { color: #e4e0ff; font-weight: 600; }
   .score b { font-size: 30px; text-shadow: 0 3px 0 rgba(0,0,0,.28); }
   .chips { color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,.25); }
-  .lvlbar { height: 6px; border-radius: 0 6px 6px 0; background: linear-gradient(90deg, #4ade80, #fde047, #fb923c); box-shadow: none; }
+  .prog { background: linear-gradient(180deg, rgba(255,255,255,.2), rgba(255,255,255,.08)); border: 2px solid rgba(255,255,255,.22); }
 
   .board { padding: 6px; border-radius: 28px;
     background: linear-gradient(160deg, #fff59d 0%, #ffd23f 20%, #4ade80 50%, #22d3ee 75%, #a78bfa 100%);
@@ -364,13 +377,17 @@
     .overlay p.score2 { font-size: 15px; }
     .overlay.over #msg { font-size: 20px; }
     .hero { font-size: 52px; }
+    .hero.art { height: 76px; }
     button { min-height: 52px; font-size: 19px; }
     .row { width: 100%; max-width: 440px; gap: 10px; }
     .row #play { flex: 1 0 100%; min-height: 62px; font-size: 23px; }
     .row #contBtn { flex: 1 0 100%; min-height: 50px; font-size: 19px; }
-    .row .secondary { flex: 1 1 0; min-width: 0; padding: 10px 4px; font-size: 16px; white-space: nowrap; }
+    .row .secondary { flex: 1 1 calc(50% - 5px); min-width: 0; padding: 10px 4px; font-size: 16px; white-space: nowrap; }
     .seg { width: 100%; max-width: 440px; }
     .seg button { flex: 1; min-height: 48px; font-size: 17px; }
+    #diffSeg button { white-space: nowrap; padding: 7px 4px; }   /* „🙂 Normální“ se nesmí zalomit */
+    .overlay.over #helpBtn { display: none; }   /* na konci hry jako dřív bez přehledu, tlačítka v jednom řádku */
+    .overlay.over .row .secondary { flex: 1 1 0; }
     .legend { font-size: 14px; gap: 6px 8px; grid-template-columns: repeat(2, auto); max-width: 100%; }
     .tip { font-size: 14px; max-width: 440px; }
     .loginform, .lblist, .wlabel, .opts { max-width: 440px; }
@@ -380,8 +397,8 @@
     button.link { min-height: 0; font-size: inherit; }
     .lblist { gap: 8px; }
     .lblist li { min-height: 54px; padding: 10px 14px; font-size: 18px; grid-template-columns: 40px 1fr auto; }
-    #lbBack, #wDone, #sDone { width: 100%; max-width: 440px; position: sticky; bottom: 6px; z-index: 2; box-shadow: 0 6px 0 #138a3e, 0 0 0 10px rgba(26,18,72,.9), 0 -14px 24px 6px rgba(26,18,72,.9); }
-    #lbBack { box-shadow: 0 5px 0 #4632b8, 0 0 0 10px rgba(26,18,72,.9), 0 -14px 24px 6px rgba(26,18,72,.9); }
+    #lbBack, #wDone, #sDone, #helpBack { width: 100%; max-width: 440px; position: sticky; bottom: 6px; z-index: 2; box-shadow: 0 6px 0 #138a3e, 0 0 0 10px rgba(26,18,72,.9), 0 -14px 24px 6px rgba(26,18,72,.9); }
+    #lbBack, #helpBack { box-shadow: 0 5px 0 #4632b8, 0 0 0 10px rgba(26,18,72,.9), 0 -14px 24px 6px rgba(26,18,72,.9); }
     #preview { max-width: 440px; height: 128px; }
     .wlabel { font-size: 13px; }
     .grid { max-width: 440px; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px; }
@@ -391,6 +408,7 @@
     #laugh { max-width: 400px; height: 160px; }
   }
   @media (max-width: 380px) {
+    #diffSeg button { font-size: 15px; }
     h1 { font-size: 28px; }
     .icon-btn { width: 42px; height: 42px; }
     .score b { font-size: 24px; }
@@ -401,7 +419,7 @@
     body {
       grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
       grid-template-rows: auto auto minmax(0, 1fr);
-      grid-template-areas: "top stage pr" "scores stage pr" "pl stage pr";
+      grid-template-areas: "top stage prog" "scores stage pr" "pl stage pr";   /* pruh postupu vpravo nahoře, vlevo už není místo */
       align-content: stretch; align-items: start; column-gap: 18px; row-gap: 10px;
       padding: calc(var(--sat) + 8px) calc(var(--sar) + 12px) calc(var(--sab) + 8px) calc(var(--sal) + 12px);
     }
@@ -425,13 +443,19 @@
     #overlay .tip, #overlay .legend { display: none; }
     #overlay .hero { font-size: 44px; }
     #overlay .row #play { min-height: 56px; font-size: 21px; }
+    #overlay .row .secondary { flex: 1 1 0; }
+    #helpBtn { flex: 0 0 56px !important; } #helpBtn .hl { display: none; }   /* na šířku jen ❓ */
     #laugh { height: 128px; }
     .overlay h2 { font-size: 26px; }
     .opts { display: grid; grid-template-columns: 1fr 1fr; max-width: 820px; }
-    #sDone, #lbBack, #wDone { max-width: 320px; }
+    #sDone, #lbBack, #wDone, #helpBack { max-width: 320px; }
     #pad1 { grid-area: pr; justify-self: start; }
     #pad2 { grid-area: pr; justify-self: start; }
-    body.m2 { grid-template-areas: "top stage s2" "s1 stage pr" "pl stage pr"; }
+    body.m2 { grid-template-areas: "top stage s2" "s1 stage prog" "pl stage pr"; }
+    .prog { width: 100%; max-width: 280px; justify-self: start; align-self: start; gap: 6px; padding: 3px 10px; font-size: 13px; }
+    .prog { flex-wrap: wrap; row-gap: 5px; border-radius: 16px; padding: 6px 12px; }
+    .prog .pbar { order: 9; flex: 1 0 100%; }   /* na šířku: čísla nahoře, pruh pod nimi */
+    .prog .pnext { margin-left: auto; }
     body.m2 .scores { display: contents; }
     body.m2 #b1 { grid-area: s1; width: 100%; max-width: 280px; justify-self: end; }
     body.m2 #b2 { grid-area: s2; width: 100%; max-width: 280px; justify-self: start; }
@@ -453,7 +477,9 @@
     .chips { font-size: 13px; }
     .hint { display: none; }
     /* ⏪ přetočení: odznak v rohu karty, nezabírá místo v řádku */
-    .chips .rw { position: absolute; top: 3px; right: 5px; font-size: 12px; line-height: 1.35; padding: 0 4px; }
+    .chips .rw { position: absolute; right: -4px; bottom: calc(100% + 5px); font-size: 12px; line-height: 1.35; padding: 0 4px; }   /* nad bonusy, aspoň 4 px mezera */
+    .score .chips { position: absolute; right: 9px; bottom: 6px; line-height: 1.2; }   /* bonusy dole vpravo, odznak ⏪ nad nimi */
+    .prog { min-height: 28px; font-size: 13px; padding: 2px 12px; }
     /* šipky do obráceného T: ▲ nahoře, ◀ ▼ ▶ pod ním */
     .pad { --pk: 52px; grid-template-rows: repeat(2, var(--pk)); }
     .pad [data-d="u"] { grid-area: 1 / 2; } .pad [data-d="l"] { grid-area: 2 / 1; }
@@ -466,15 +492,15 @@
   <div class="blob a"></div><div class="blob b"></div><div class="blob c"></div>
 
   <div class="top">
-    <h1><span class="logo">🐍</span><span class="word">Had</span></h1>
+    <h1><canvas class="logo" id="logoSnake" aria-hidden="true"></canvas><span class="word">Had</span></h1>
     <button class="icon-btn" id="pause" title="Pauza (mezerník)">⏸</button>
     <button class="icon-btn" id="music" title="Hudba (H)">🎵</button>
     <button class="icon-btn" id="mute" title="Zvuk (M)">🔊</button>
     <button class="icon-btn" id="setTop" title="Nastavení">⚙️</button>
   </div>
   <div class="scores">
-    <div class="score" id="b1"><div><small id="l1">Skóre</small><b id="v1">0</b></div><span class="chips" id="c1"></span><i class="lvlbar" id="lb1"></i></div>
-    <div class="score" id="b2"><div><small id="l2">Nejvyšší</small><b id="v2">0</b></div><span class="chips" id="c2"></span><i class="lvlbar" id="lb2"></i></div>
+    <div class="score" id="b1"><div><small id="l1">Skóre</small><b id="v1">0</b></div><span class="chips" id="c1"></span></div>
+    <div class="score" id="b2"><div><small id="l2">Nejvyšší</small><b id="v2">0</b></div><span class="chips" id="c2"></span></div>
   </div>
   <div class="stage" id="stage">
   <div class="wrap" id="wrap">
@@ -482,7 +508,7 @@
 
     <div class="overlay" id="overlay">
       <div class="ovl-l">
-      <div class="hero" id="hero">🐍</div>
+      <div class="hero art" id="hero" aria-hidden="true"><canvas id="heroSnake"></canvas></div>
       <canvas id="laugh" class="hidden"></canvas>
       <h2 id="title">Had</h2>
       <p id="msg">Sbírej ovoce a nenaraz do zdi ani do hada.</p>
@@ -507,17 +533,23 @@
         <button id="wardrobeBtn" class="secondary">🎨 Šatník</button>
         <button id="lbBtn" class="secondary">🏆 Žebříček</button>
         <button id="setBtn" class="secondary">⚙️ Nastavení</button>
+        <button id="helpBtn" class="secondary">❓<span class="hl"> Jak hrát</span></button>
       </div>
+      </div>
+    </div>
+
+    <div class="overlay top-align hidden" id="helpPanel">
+      <h2>❓ Jak hrát</h2>
       <div class="legend">
         <span>🍎 +1</span><span>⭐ +5</span><span>🐭 +3 chyť ji!</span>
         <span>❄️ zpomalí</span><span>👻 projdeš vším</span><span>🌶️ 2× body</span>
         <span>🧲 přitáhne jídlo</span><span>🍄 zmenší hada</span><span>🌀 portál</span><span>💣 nejez!</span>
-        <span>🪨 kameny</span><span>🐍 divoký had</span><span>⏳ ovoce stárne</span>
+        <span>🪨 kameny</span><span>🐍 divoký had</span><span>⏳ ovoce stárne</span><span>⏪ vrátí čas</span>
       </div>
       <div class="tip">Jez rychle za sebou → combo ×2 až ×5 · občas přijde ovocná horečka 🍉</div>
       <div class="tip">Od 2. úrovně máš 3 životy ❤️ a okrajem projedeš na druhou stranu</div>
       <div class="tip">Každé 2 úrovně nový svět: 🌿 → 🌴 → 🏜️ → 🏙️ → ❄️ → 🌋 · od džungle v každém světě 3 poklady 💎</div>
-      </div>
+      <button id="helpBack" class="secondary">Zpět</button>
     </div>
 
     <div class="overlay top-align hidden" id="lbPanel">
@@ -537,7 +569,7 @@
     </div>
 
     <div class="overlay hidden" id="loginPanel">
-      <div class="hero">🐍</div>
+      <div class="hero art" aria-hidden="true"><canvas id="loginSnake"></canvas></div>
       <h2>Vítej ve hře Had!</h2>
       <p>Napiš svoje jméno. Tvoje hry a rekordy se uloží do historie a uvidí je všichni.</p>
       <form class="loginform" id="loginForm" novalidate>
@@ -576,6 +608,7 @@
     </div>
   </div>
   </div>
+  <div class="prog off" id="prog"><span class="pf">🍎 <b id="progN">0/6</b></span><i class="pbar"><i id="progFill"></i></i><span class="pgem" id="progGem"></span><span class="pnext" id="progNext"></span></div>
   <div class="pads hidden" id="pads">
     <div class="pad" id="pad1" data-p="0"><button data-d="u" aria-label="Nahoru">▲</button><button data-d="l" aria-label="Doleva">◀</button><span class="lbl"></span><button data-d="r" aria-label="Doprava">▶</button><button data-d="d" aria-label="Dolů">▼</button></div>
     <div class="pad hidden" id="pad2" data-p="1"><button data-d="u" aria-label="Nahoru">▲</button><button data-d="l" aria-label="Doleva">◀</button><span class="lbl"></span><button data-d="r" aria-label="Doprava">▶</button><button data-d="d" aria-label="Dolů">▼</button></div>
@@ -4266,6 +4299,56 @@
     renderSnake(pctx, c, pts, fp, now, { mood, look: { x: 1, y: 0.2 }, blink: now % 3000 < 140, mouth: false, alpha: 1, glowColor: mood === 'chili' ? '#ff7a2a' : null });
   }
 
+  // ---------- kreslený had místo emoji 🐍 (menu, přihlášení, logo) ----------
+  const artCvs = [$('heroSnake'), $('loginSnake'), $('logoSnake')];
+  let heroDuo = false, artLast = 0;
+  // velikost plátna se zjišťuje jen při změně (ResizeObserver), ne v každém snímku
+  const artDirty = new Set(artCvs);
+  if (window.ResizeObserver) { const ro = new ResizeObserver(es => { for (const e of es) artDirty.add(e.target); if (es.some(e => e.target === artCvs[2])) drawLogo(); }); artCvs.forEach(cv => ro.observe(cv)); }
+  function fitArt(cv) {   // velikost plátna podle CSS × DPR; true = změnila se
+    if (window.ResizeObserver && !artDirty.has(cv)) return false;
+    artDirty.delete(cv);
+    const dpr = DPR(), w = Math.round(cv.clientWidth * dpr), h = Math.round(cv.clientHeight * dpr);
+    if (!w || !h) artDirty.add(cv);   // ještě není vidět – zkusit znovu
+    if (!w || !h || (cv.width === w && cv.height === h)) return false;
+    cv.width = w; cv.height = h; return true;
+  }
+  // had z existující funkce renderSnake; face = 1 hlavou doprava, −1 doleva
+  function artSnake(g, cx, cy, c, n, s, now, face, ph, wave) {
+    const gap = c * 0.9, headX = cx + face * ((n - 1) * gap / 2 - c * 0.3), pts = [];
+    for (let i = 0; i < n; i++) pts.push({ x: headX - face * i * gap, y: cy + c * 0.15 + Math.sin(i * 0.75 - now / 260 * wave + ph) * c * 0.5 * Math.min(1, i / 2), i });
+    renderSnake(g, c, pts, { skin: s.skin, acc: s.acc, dir: { x: face, y: 0 }, bulges: [], i: ph }, now,
+      { mood: 'normal', look: { x: face, y: 0.2 }, blink: wave && (now + ph * 1300) % 3400 < 140, mouth: false, alpha: 1, glowColor: null });
+  }
+  function drawArt(cv, now) {
+    fitArt(cv);
+    const W = cv.width, H = cv.height, g = cv.getContext('2d');
+    if (!W || !H) return;
+    g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, W, H);
+    if (!heroDuo || cv.id === 'loginSnake') { artSnake(g, W / 2, H / 2, Math.min(H / 3, W / 10), 8, sel[0], now, 1, 0, 1); return; }
+    const c = Math.min(H / 3.2, W / 17);   // souboj: dva hadi proti sobě, mezi nimi ⚔️
+    artSnake(g, W * 0.25, H / 2, c, 6, sel[0], now, 1, 0, 1);
+    artSnake(g, W * 0.75, H / 2, c, 6, sel[1], now, -1, 2, 1);
+    g.font = `${c * 1.5}px ${EMOJI_FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('⚔️', W / 2, H / 2 + c * 0.1);
+  }
+  function drawLogo() {   // statický – kreslí se jen při změně vzhledu nebo velikosti
+    const cv = artCvs[2];
+    fitArt(cv);
+    const W = cv.width, H = cv.height, g = cv.getContext('2d');
+    if (!W || !H) return;
+    g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, W, H);
+    const c = Math.min(H / 2.5, W / 4.6), gap = c * 0.72, pts = [];
+    for (let i = 0; i < 6; i++) pts.push({ x: W / 2 + c * 1.6 - i * gap, y: H / 2 + Math.sin(i * 1.15 - 0.5) * c * 0.62 * Math.min(1, 0.35 + i / 2), i });
+    renderSnake(g, c, pts, { skin: sel[0].skin, acc: sel[0].acc, dir: { x: 1, y: 0 }, bulges: [], i: 0 }, 0,
+      { mood: 'happy', look: { x: 1, y: 0 }, blink: false, mouth: false, alpha: 1, glowColor: null });
+  }
+  function drawMenuArt(now) {
+    if (now - artLast < 30) return;   // 30× za vteřinu stačí, šetří telefon
+    artLast = now;
+    if (loginOpen) drawArt(artCvs[1], now);
+    else if ((phase === 'menu' || phase === 'over') && !laughOn && !overlay.classList.contains('hidden')) drawArt(artCvs[0], now);
+  }
+
   const lc = $('laugh'), lctx = lc.getContext('2d');
   let laughOn = false, laughSkin = 'classic', laughAcc = 'none', laughStart = 0, laughDef = null;
   let laughFx = [], laughTimers = [], beatsDone = 0, spat = false, lastLaughT = 0, tearAt = 0;
@@ -4432,6 +4515,7 @@
   }
   function closeWardrobe() {
     wardrobeOpen = false;
+    drawLogo();
     wardrobe.classList.add('hidden');
     overlay.classList.remove('hidden');
     updatePads();
@@ -4664,6 +4748,13 @@
   }
   document.querySelectorAll('#lbTabs button').forEach(b => b.addEventListener('click', () => { lbTab = b.dataset.t; sfx.click(); lbRender(); }));
   document.querySelectorAll('#lbDiff button').forEach(b => b.addEventListener('click', () => { lbDiff = b.dataset.d; sfx.click(); lbRender(); }));
+  // ❓ Jak hrát: přehled bonusů a tipů (dřív přímo v menu)
+  const helpPanel = $('helpPanel');
+  let helpOpen = false;
+  function openHelp() { helpOpen = true; sfx.click(); overlay.classList.add('hidden'); helpPanel.classList.remove('hidden'); helpPanel.scrollTop = 0; }
+  function closeHelp() { helpOpen = false; helpPanel.classList.add('hidden'); overlay.classList.remove('hidden'); }
+  $('helpBtn').addEventListener('click', openHelp);
+  $('helpBack').addEventListener('click', closeHelp);
   $('lbBtn').addEventListener('click', () => openLb());
   $('lbBack').addEventListener('click', closeLb);
 
@@ -4732,6 +4823,7 @@
     updateConfetti(dt);
     if (replay) drawReplay(now); else if (rewindFx) drawRewind(now); else draw(now);
     if (wardrobeOpen) drawPreview(now);
+    drawMenuArt(now);
     if (laughOn && !overlay.classList.contains('hidden')) drawLaugh(now);
   }
 
@@ -4747,18 +4839,29 @@
   function chips(p) {
     if (!p || !p.alive) return '';
     let s = '';
-    if (isGhost(p)) s += '👻 ';
-    if (isChili(p)) s += '🌶️ ';
-    if (isMagnet(p)) s += '🧲 ';
+    // ikona bonusu s ubývající čárkou (po dvanáctinách, ať se HUD nepřekresluje každý snímek)
+    const pw = (ic, left, total, col) => `<span class="pw" style="--t:${Math.max(0, Math.min(1, Math.ceil(left / total * 12) / 12)).toFixed(3)};--pc:${col}">${ic}</span> `;
+    if (isGhost(p)) s += pw('👻', p.ghostUntil - time, POWER_TIME, '#e2e8f0');
+    if (isChili(p)) s += pw('🌶️', p.chiliUntil - time, POWER_TIME, '#ff7a45');
+    if (isMagnet(p)) s += pw('🧲', p.magnetUntil - time, 7, '#f87171');
+    if (time < slowUntil && (mode === 2 || p === players[0])) s += pw('❄️', slowUntil - time, 5, '#60a5fa');
     if (mode === 1 && rewinds) s += '<span class="rw">⏪</span> ';
     if (comboActive(p)) s += `<span class="combo">×${p.combo}</span> `;
-    if (mode === 1 && gems.total) s += `💎${gems.found}/${gems.total} `;
     return s;
   }
   function updateHud(reset) {
     if (reset) for (const k in hudCache) delete hudCache[k];
     const prog = phase === 'menu' ? 0 : Math.min(1, levelEaten / levelGoal(level));
-    if (hudCache.prog !== prog) { hudCache.prog = prog; $('lb1').style.width = $('lb2').style.width = (prog * 100).toFixed(1) + '%'; }
+    if (hudCache.prog !== prog) { hudCache.prog = prog; $('progFill').style.width = (prog * 100).toFixed(1) + '%'; }
+    // pruh pod plochou: kolik ovoce do další úrovně a kam vede
+    const inGame = phase !== 'menu' && phase !== 'over';
+    if (hudCache.progOn !== inGame) { hudCache.progOn = inGame; $('prog').classList.toggle('off', !inGame); }
+    if (inGame) {
+      const nw = worldFor(level + 1);
+      setText('progN', `${Math.min(levelEaten, levelGoal(level))}/${levelGoal(level)}`);
+      setText('progNext', nw !== world ? `→ ${nw.icon}` : `→ úr. ${level + 1}`);
+      setText('progGem', mode === 1 && gems.total ? `💎 ${gems.found}/${gems.total}` : '');   // poklady (dřív v kartě skóre)
+    }
     const p0 = players[0], p1 = players[1];
     const acc0 = SKIN[sel[0].skin].accent, acc1 = SKIN[sel[1].skin].accent;
     if (mode === 1) {
@@ -4790,7 +4893,7 @@
     document.querySelectorAll('#modeSeg button').forEach(b => b.classList.toggle('active', +b.dataset.mode === m));
     if (phase === 'menu' || phase === 'over') {
       players = []; foods = []; portals = [];
-      heroEl.textContent = m === 1 ? '🐍' : '🐍⚔️🐍';
+      heroDuo = m === 2;   // v menu kreslený had, pro dva hráče dva hadi
       titleEl.textContent = m === 1 ? 'Had' : 'Hadí souboj';
       msgEl.textContent = m === 1 ? 'Sbírej ovoce a nenaraz do zdi ani do hada.'
         : touchUI ? (padOn ? 'Kdo první narazí, prohrál. Každý má své šipky – hráč 1 vlevo, hráč 2 vpravo.' : 'Kdo první narazí, prohrál. Hráč 1 přejíždí prstem po levé půlce obrazovky, hráč 2 po pravé.')
@@ -4827,7 +4930,7 @@
     $('pause').textContent = paused ? '▶️' : '⏸';
   }
   function tryStart(startW) {
-    if ((phase === 'menu' || phase === 'over') && canRestart && !wardrobeOpen && !lbOpen && !settingsOpen && !loginOpen) { newGame(startW); $('pause').textContent = '⏸'; }
+    if ((phase === 'menu' || phase === 'over') && canRestart && !wardrobeOpen && !lbOpen && !helpOpen && !settingsOpen && !loginOpen) { newGame(startW); $('pause').textContent = '⏸'; }
   }
 
   // ---------- ovládání ----------
@@ -4839,8 +4942,8 @@
     if (ARROWS[e.code]) { e.preventDefault(); if (!paused) setDir(0, ...ARROWS[e.code]); }
     else if (WASD[e.code]) { if (!paused) setDir(mode === 2 ? 1 : 0, ...WASD[e.code]); }
     else if (e.code === 'Space') { e.preventDefault(); togglePause(); }
-    else if (e.code === 'Enter') { if (phase === 'menu' || phase === 'over') { e.preventDefault(); if (settingsOpen) closeSettings(); else if (lbOpen) closeLb(); else if (wardrobeOpen) closeWardrobe(); else tryStart(); } }
-    else if (e.code === 'Escape') { if (settingsOpen) closeSettings(); else if (lbOpen) closeLb(); else if (wardrobeOpen) closeWardrobe(); }
+    else if (e.code === 'Enter') { if (phase === 'menu' || phase === 'over') { e.preventDefault(); if (settingsOpen) closeSettings(); else if (lbOpen) closeLb(); else if (helpOpen) closeHelp(); else if (wardrobeOpen) closeWardrobe(); else tryStart(); } }
+    else if (e.code === 'Escape') { if (settingsOpen) closeSettings(); else if (lbOpen) closeLb(); else if (helpOpen) closeHelp(); else if (wardrobeOpen) closeWardrobe(); }
     else if (e.code === 'KeyM') setMuted(!muted);
     else if (e.code === 'KeyH') setMusic(!musicOn);
   });
@@ -4944,6 +5047,7 @@
     if (phase === 'play' || phase === 'countdown') { if (!paused) togglePause(); }
     if (wardrobeOpen) closeWardrobe();
     if (lbOpen) closeLb();
+    if (helpOpen) closeHelp();
     settingsOpen = true;
     settingsEl._back = overlay.classList.contains('hidden') ? null : overlay;
     overlay.classList.add('hidden');
@@ -5027,6 +5131,7 @@
     fx.width = Math.round(window.innerWidth * dpr);
     fx.height = Math.round(window.innerHeight * dpr);
     if (wardrobeOpen) resizePreview();
+    drawLogo();
     if (laughOn) { lc.width = Math.round(lc.clientWidth * dpr); lc.height = Math.round(lc.clientHeight * dpr); }
   }
   let resizeQueued = false;

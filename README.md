@@ -5,6 +5,8 @@ Jednoduchá, ale zábavná hra Had v jednom souboru `index.html` – hraje se p�
 - Ovládání: šipky / WASD, na mobilu přejetí prstem
 - Režim pro 1 nebo 2 hráče (hráč 2 hraje WASD)
 - Bonusy (🍄 houba hada zmenší), myš, portály, ovocná horečka, šatník se vzhledy a doplňky
+- V menu, na přihlášení a v logu je kreslený had ve vybraném vzhledu (pro 2 hráče dva hadi ⚔️). Přehled bonusů a tipů je pod tlačítkem „❓ Jak hrát“.
+- Pod hrací plochou je pruh postupu: kolik ovoce zbývá do další úrovně, poklady 💎 a ikona dalšího světa. Aktivní bonusy mají v kartě skóre pod ikonou ubývající čárku.
 
 Stačí otevřít `index.html` v prohlížeči.
 
@@ -23,7 +25,7 @@ Stačí otevřít `index.html` v prohlížeči.
   - ❄️ **Ledové království** (úr. 9–10): na ledu had klouže (zatáčí o krok později), ledové kry, sněhové koule
   - 🌋 **Sopka** (úr. 11+): lávové řeky, erupce kráterů (lávové bomby), od 12. úrovně se blíží láva od okrajů
 - Bonus ⏪ **Přetočení času** (jen 1 hráč, stejně častý jako 👻 duch): po snědení má hráč 1 přetočení v zásobě (max 1, ikona ⏪ v HUD). Při nárazu místo smrti / ztráty života se hra vrátí asi o 2 vteřiny (had, jídlo, překážky, kokosy, skóre), po efektu přetáčení a odpočtu 3‑2‑1 se hraje dál a had je 1,5 s nezranitelný jako duch. Přetočení nikdy nevrátí hru před postup do další úrovně.
-- Od džungle jsou v každém světě 3 poklady 💎 (+10 × násobek úrovně, za všechny tři bonus). V HUD je počítadlo.
+- Od džungle jsou v každém světě 3 poklady 💎 (+10 × násobek úrovně, za všechny tři bonus). Počítadlo je v pruhu pod plochou.
 - Při přechodu do nového světa had vyleze z portálu (zbytek těla se vysouvá postupně).
 - Had pluje vlněním, mlsá jazykem, když cítí jídlo, a při 25+ bodech svléká kůži.
 
