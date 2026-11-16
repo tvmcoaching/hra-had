@@ -22,6 +22,7 @@ Stačí otevřít `index.html` v prohlížeči.
   - 🏙️ **Město** (úr. 7–8): domy, parky, silnice s jednosměrnými pruhy a auty (přejedou ovoce, na hada troubí)
   - ❄️ **Ledové království** (úr. 9–10): na ledu had klouže (zatáčí o krok později), ledové kry, sněhové koule
   - 🌋 **Sopka** (úr. 11+): lávové řeky, erupce kráterů (lávové bomby), od 12. úrovně se blíží láva od okrajů
+- Bonus ⏪ **Přetočení času** (jen 1 hráč, stejně častý jako 👻 duch): po snědení má hráč 1 přetočení v zásobě (max 1, ikona ⏪ v HUD). Při nárazu místo smrti / ztráty života se hra vrátí asi o 2 vteřiny (had, jídlo, překážky, kokosy, skóre), po efektu přetáčení a odpočtu 3‑2‑1 se hraje dál a had je 1,5 s nezranitelný jako duch. Přetočení nikdy nevrátí hru před postup do další úrovně.
 - Od džungle jsou v každém světě 3 poklady 💎 (+10 × násobek úrovně, za všechny tři bonus). V HUD je počítadlo.
 - Při přechodu do nového světa had vyleze z portálu (zbytek těla se vysouvá postupně).
 - Had pluje vlněním, mlsá jazykem, když cítí jídlo, a při 25+ bodech svléká kůži.
