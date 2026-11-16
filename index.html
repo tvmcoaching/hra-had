@@ -438,6 +438,25 @@
     body.m2 #pad2 { grid-area: pr; align-self: end; }
     #halves > div { padding-bottom: calc(var(--sab) + 10px); }
   }
+
+  /* ---------- telefon na výšku: co nejvíc místa pro hrací plochu ---------- */
+  @media (max-width: 600px) and (orientation: portrait) {
+    body { --pad: 5px; gap: 6px; padding-top: calc(var(--sat) + 6px); padding-bottom: calc(var(--sab) + 6px); }
+    h1 { font-size: 22px; gap: 5px; }
+    .top { gap: 6px; }
+    .icon-btn { width: 36px; height: 36px; font-size: 16px; border-radius: 11px; }
+    .scores { gap: 6px; }
+    .score { padding: 3px 10px; border-radius: 12px; }
+    .score small { font-size: 10px; letter-spacing: .6px; }
+    .score b { font-size: 20px; }
+    .chips { font-size: 13px; }
+    .hint { display: none; }
+    /* šipky do obráceného T: ▲ nahoře, ◀ ▼ ▶ pod ním */
+    .pad { --pk: 52px; grid-template-rows: repeat(2, var(--pk)); }
+    .pad [data-d="u"] { grid-area: 1 / 2; } .pad [data-d="l"] { grid-area: 2 / 1; }
+    .pad [data-d="d"] { grid-area: 2 / 2; } .pad [data-d="r"] { grid-area: 2 / 3; }
+    .pad .lbl { display: none; }
+  }
 </style>
 </head>
 <body>
